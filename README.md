@@ -286,3 +286,39 @@ Once connected, try asking:
 - Contact: hello@bilauitmcuti.com
 
 Full docs: [docs.bilauitmcuti.com/docs/mcp](https://docs.bilauitmcuti.com/docs/mcp)
+
+---
+
+## Development
+
+This repository is the Cloudflare Worker that serves `https://mcp.bilauitmcuti.com/mcp`. It is a read-only proxy: each tool issues `GET` requests to the public API (`https://api.bilauitmcuti.com/api/v1/*`). Calendar data and API implementation are not in this repo.
+
+```bash
+npm install
+npm run typecheck
+npm run dev
+```
+
+Local tools call production unless you override the API base:
+
+```bash
+npx wrangler dev --var MCP_API_BASE_URL:http://localhost:3000
+```
+
+Then point a client at `http://127.0.0.1:8787/mcp`.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `MCP_API_BASE_URL` | No | Base URL tools call. Defaults to `https://api.bilauitmcuti.com`. |
+| `DOCS_BASE_URL` | No | Docs origin for connector website and icon URLs. Defaults to `https://docs.bilauitmcuti.com`. |
+
+Deploy:
+
+```bash
+npx wrangler login
+npm run deploy
+```
+
+Health check (not rate limited): `GET /mcp/health` returns HTTP 200.
+
+Licensed under the [MIT License](LICENSE). Data is unofficial and not affiliated with UiTM.

@@ -1,0 +1,22 @@
+name = "bilauitmcuti-mcp"
+main = "src/index.ts"
+compatibility_date = "2025-09-27"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+send_metrics = false
+
+routes = [
+  { pattern = "mcp.bilauitmcuti.com", zone_name = "bilauitmcuti.com", custom_domain = true },
+]
+
+[vars]
+MCP_API_BASE_URL = "https://api.bilauitmcuti.com"
+DOCS_BASE_URL = "https://docs.bilauitmcuti.com"
+
+[observability]
+enabled = true
+
+[[ratelimits]]
+name = "API_RATE_LIMIT"
+namespace_id = "2001"
+simple = { limit = 500, period = 60 }
