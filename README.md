@@ -1,45 +1,19 @@
 # Bila UiTM Cuti — MCP Server
 
-A hosted [Model Context Protocol](https://modelcontextprotocol.io) server that lets AI assistants read the **UiTM academic calendar** and **Malaysia public holidays** in plain language.
+A hosted [Model Context Protocol](https://modelcontextprotocol.io) server that lets AI assistants read the **UiTM academic calendar** and **Malaysia public holidays**.
 
-It's read-only, sits on top of the public Bila UiTM Cuti API, requires no API key, and can't modify any data.
+It is read-only, needs no API key, and cannot change any data. The data is unofficial and not affiliated with UiTM — verify important dates before you rely on them.
 
-> Ask things like: *"When does lecture week 1 start for session B-20264?"* or *"List the public holidays in Selangor for 2026."*
+> *"When does lecture week 1 start for session B-20264?"*
+> *"List the public holidays in Selangor for 2026."*
 
----
+**Connect:** `https://mcp.bilauitmcuti.com/mcp`
 
-## Table of contents
-
-- [Quick start](#quick-start)
-- [What is MCP?](#what-is-mcp)
-- [How it works](#how-it-works)
-- [Available tools](#available-tools)
-- [Example call](#example-call)
-- [Auth & rate limits](#auth--rate-limits)
-- [Client setup](#client-setup)
-  - [Cursor](#cursor)
-  - [Claude Code](#claude-code)
-  - [VS Code (GitHub Copilot)](#vs-code-github-copilot)
-  - [Codex](#codex)
-  - [OpenCode](#opencode)
-  - [ChatGPT & Claude (web/mobile)](#chatgpt--claude-webmobile)
-- [Verifying the server](#verifying-the-server)
-- [Example prompts](#example-prompts)
-- [Troubleshooting](#troubleshooting)
-- [Changelog](#changelog)
-- [Legal](#legal)
+Docs: [docs.bilauitmcuti.com/docs/mcp](https://docs.bilauitmcuti.com/docs/mcp)
 
 ---
 
 ## Quick start
-
-The server is already hosted — there's nothing to install or run yourself. Point any MCP-compatible client at:
-
-```
-https://mcp.bilauitmcuti.com/mcp
-```
-
-For clients that use a JSON config (e.g. Cursor), add it like this:
 
 ```json
 {
@@ -51,72 +25,26 @@ For clients that use a JSON config (e.g. Cursor), add it like this:
 }
 ```
 
----
-
-## What is MCP?
-
-The Model Context Protocol is an open standard for connecting AI assistants to external data sources and tools. Through this server, a connected assistant can look up:
-
-- **Academic calendar** — sessions, activities, breaks, and exam weeks for Groups A and B
-- **Lecture weeks** — the 14 teaching weeks of a session
-- **Today's status** — what's happening on a given date (class day, break, exam week, etc.)
-- **Public holidays** — Malaysia holidays filtered by year, coverage, and state
-
-## How it works
-
-The server runs remotely over the **Streamable HTTP** transport at the `/mcp` endpoint. Your client connects to that URL, and the server translates each MCP tool call into a `GET` request against `/api/v1/*`, returning the result to your assistant. No local process, no installation.
+The server is already hosted. Point any client that supports remote MCP (Streamable HTTP) at that URL.
 
 ---
 
-## Available tools
+## What you can ask
 
-| Tool | Endpoint | Description |
-|---|---|---|
-| `get_academic_meta` | `GET /api/v1/meta` | List UiTM sessions & programs — call this first to get valid session IDs (Group A/B or all). |
-| `get_calendar` | `GET /api/v1/calendar` | Get academic calendar activities — lectures, breaks, exams — for a session or group. |
-| `get_today_status` | `GET /api/v1/today` | Check whether a date is a class day, break, exam week, or study week (group required). |
-| `get_lecture_weeks` | `GET /api/v1/lecture-weeks` | Get lecture week dates (Week 1–14) for one session. |
-| `get_public_holiday_meta` | `GET /api/v1/public-holiday/meta` | List public holiday filters — available years, coverage types, and state slugs. |
-| `get_public_holidays` | `GET /api/v1/public-holiday` | List Malaysia public holidays by year, coverage, and state. |
+| Tool | What it does |
+| --- | --- |
+| `get_academic_meta` | List sessions and programs. Call this first for valid session IDs. |
+| `get_calendar` | Lectures, breaks, exams, and other activities for a session or group. |
+| `get_today_status` | Whether a date is a class day, break, exam week, or study week. Group is required. |
+| `get_lecture_weeks` | Week 1–14 dates for one session. |
+| `get_public_holiday_meta` | Years, coverage options, and Malaysia state slugs. |
+| `get_public_holidays` | Public holidays by year, coverage, and state. |
 
-Boolean query flags accept real booleans. `get_calendar` and `get_public_holidays` also support `limit` and `compact` params to trim large payloads.
-
----
-
-## Example call
-
-A typical `tools/call` request sent as the Streamable HTTP POST body:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "get_today_status",
-    "arguments": {
-      "group": "B",
-      "date": "2026-03-09"
-    }
-  }
-}
-```
-
-The response includes both a text block (stringified JSON) and `structuredContent` for clients that prefer typed results.
-
----
-
-## Auth & rate limits
-
-- **No API key required** — the server is public and read-only; tools only ever issue `GET` requests.
-- Calls share the public API's rate limits: **500 requests/minute per IP**, plus a separate, more restrictive bucket for full-dataset queries.
-- `GET /mcp/health` is **not** rate limited.
+`get_calendar` and `get_public_holidays` accept `limit` and `compact` when the result is large.
 
 ---
 
 ## Client setup
-
-Any client that supports a remote (Streamable HTTP) MCP server can connect. Point it at `https://mcp.bilauitmcuti.com/mcp`.
 
 ### Cursor
 
@@ -134,13 +62,11 @@ Any client that supports a remote (Streamable HTTP) MCP server can connect. Poin
 
 ### Claude Code
 
-From the CLI:
-
 ```bash
 claude mcp add --transport http bilauitmcuti https://mcp.bilauitmcuti.com/mcp
 ```
 
-Or commit it to a project via `.mcp.json` (remote servers need `"type": "http"`):
+Or in `.mcp.json`:
 
 ```json
 {
@@ -153,11 +79,9 @@ Or commit it to a project via `.mcp.json` (remote servers need `"type": "http"`)
 }
 ```
 
-> Claude Desktop and Claude web/mobile use **custom connectors** instead of the CLI — see [ChatGPT & Claude (web/mobile)](#chatgpt--claude-webmobile) below.
-
 ### VS Code (GitHub Copilot)
 
-`.vscode/mcp.json` uses a `servers` key:
+`.vscode/mcp.json`:
 
 ```json
 {
@@ -172,13 +96,11 @@ Or commit it to a project via `.mcp.json` (remote servers need `"type": "http"`)
 
 ### Codex
 
-From the CLI:
-
 ```bash
 codex mcp add bilauitmcuti --url https://mcp.bilauitmcuti.com/mcp
 ```
 
-Or edit `~/.codex/config.toml` directly, then restart Codex:
+Or in `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.bilauitmcuti]
@@ -187,17 +109,8 @@ url = "https://mcp.bilauitmcuti.com/mcp"
 
 ### OpenCode
 
-From the CLI:
-
-```bash
-opencode mcp add bilauitmcuti --url https://mcp.bilauitmcuti.com/mcp
-```
-
-Or add it to `opencode.json` under the `mcp` key:
-
 ```json
 {
-  "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "bilauitmcuti": {
       "type": "remote",
@@ -208,34 +121,32 @@ Or add it to `opencode.json` under the `mcp` key:
 }
 ```
 
-### ChatGPT & Claude (web/mobile)
+### ChatGPT and Claude on the web
 
-Both add remote MCP servers as **custom connectors**:
+Add a custom connector with URL `https://mcp.bilauitmcuti.com/mcp` and no authentication.
 
-- **ChatGPT**: enable Developer mode under *Settings → Apps & Connectors → Advanced settings*, then create a connector with `https://mcp.bilauitmcuti.com/mcp` and set authentication to **None**. Custom connectors need a paid plan (Plus, Pro, Business, Enterprise, or Edu); on Business/Enterprise/Edu an admin must enable Developer mode first.
-- **Claude** (Desktop, web, or mobile):
-  1. Go to *Settings → Connectors → Add custom connector*.
-  2. Name it `Bila UiTM Cuti`, set the URL to `https://mcp.bilauitmcuti.com/mcp`, leave OAuth empty, and click **Add**.
-  3. In chat, enable **Bila UiTM Cuti** under Connectors and start asking about the calendar or holidays.
-  4. A connector added on the web also shows up in the mobile apps.
-
-Official setup guides:
-- [ChatGPT — Developer mode & custom connectors](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt-beta)
-- [ChatGPT — Connect from ChatGPT (Apps SDK)](https://developers.openai.com/apps-sdk/deploy/connect-chatgpt)
-- [Claude — Get started with custom connectors using remote MCP](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
-- [MCP — Connect to remote MCP servers](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-remote-servers) (covers any MCP-compatible client)
+- [ChatGPT — custom connectors](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt-beta)
+- [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
 
 ---
 
-## Verifying the server
+## Limits
 
-Use the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
+No API key. Tools only read data.
+
+The MCP endpoint allows **500 requests per minute per IP**. `GET /mcp/health` is not limited. A bare `GET /mcp` in a browser returns `405` — clients use `POST`.
+
+If you get `429`, wait the seconds in `Retry-After`, then try again.
+
+---
+
+## Check that it works
 
 ```bash
 npx @modelcontextprotocol/inspector https://mcp.bilauitmcuti.com/mcp
 ```
 
-Or list available tools directly with `curl` (POST only — a bare `GET /mcp` returns `405`, which is expected):
+Or list tools:
 
 ```bash
 curl -s -X POST 'https://mcp.bilauitmcuti.com/mcp' \
@@ -244,81 +155,39 @@ curl -s -X POST 'https://mcp.bilauitmcuti.com/mcp' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-Uptime monitors (e.g. Better Stack) should target `GET https://mcp.bilauitmcuti.com/mcp/health` and expect `200` — not `GET /mcp`.
+Try asking:
 
----
-
-## Example prompts
-
-Once connected, try asking:
-
-- "When does lecture week 1 start for session B-20264?"
-- "Is 2026-03-09 a class day for Group B Diploma?"
-- "List Malaysia public holidays in Selangor for 2026."
-- "What UiTM sessions are available for Group A?"
+- When does lecture week 1 start for session B-20264?
+- Is 2026-03-09 a class day for Group B Diploma?
+- List Malaysia public holidays in Selangor for 2026.
+- What UiTM sessions are available for Group A?
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| Tools don't show up | Restart the client after changing config, clear any MCP cache, and double-check the URL. |
-| Can't connect | Confirm the client is set to Streamable HTTP transport and uses the exact `/mcp` URL. |
-| `GET /mcp` returns 405 | Expected — Streamable HTTP requires `POST` (or use the Inspector). |
-| Rate limited (429) | Wait the number of seconds given in the `Retry-After` header, then retry. |
-| Still stuck | Re-run the [verification steps](#verifying-the-server) with MCP Inspector. |
+| What you see | What to do |
+| --- | --- |
+| Tools don't show up | Restart the client, clear its MCP cache, and confirm the URL. |
+| Can't connect | Use Streamable HTTP and the exact `/mcp` URL. |
+| `GET /mcp` returns 405 | Expected. Clients send `POST`. |
+| Rate limited (429) | Wait for `Retry-After`, then retry. |
 
 ---
 
-## Changelog
+## Sponsors
 
-- **1.0.2** — Added server instructions and Blue B connector icons; privacy and terms moved under `/docs/mcp/`.
-- **1.0.1** — Improved tool titles and parameter descriptions.
-- **1.0.0** — Initial release: remote Streamable HTTP server with calendar and public-holiday tools.
+This server is free to use. If it helps you, you can support the work:
+
+- [GitHub Sponsors](https://github.com/sponsors/shahrulestar)
+- [Sponsor via DuitNow](https://shahrulestar.com/sponsor)
 
 ---
 
 ## Legal
 
-- [Privacy Policy](https://docs.bilauitmcuti.com/docs/mcp/privacy)
-- [Terms of Use](https://docs.bilauitmcuti.com/docs/mcp/terms)
-- Contact: hello@bilauitmcuti.com
+- [Privacy](https://docs.bilauitmcuti.com/docs/mcp/privacy)
+- [Terms](https://docs.bilauitmcuti.com/docs/mcp/terms)
+- [hello@bilauitmcuti.com](mailto:hello@bilauitmcuti.com)
 
-Full docs: [docs.bilauitmcuti.com/docs/mcp](https://docs.bilauitmcuti.com/docs/mcp)
-
----
-
-## Development
-
-This repository is the Cloudflare Worker that serves `https://mcp.bilauitmcuti.com/mcp`. It is a read-only proxy: each tool issues `GET` requests to the public API (`https://api.bilauitmcuti.com/api/v1/*`). Calendar data and API implementation are not in this repo.
-
-```bash
-npm install
-npm run typecheck
-npm run dev
-```
-
-Local tools call production unless you override the API base:
-
-```bash
-npx wrangler dev --var MCP_API_BASE_URL:http://localhost:3000
-```
-
-Then point a client at `http://127.0.0.1:8787/mcp`.
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `MCP_API_BASE_URL` | No | Base URL tools call. Defaults to `https://api.bilauitmcuti.com`. |
-| `DOCS_BASE_URL` | No | Docs origin for connector website and icon URLs. Defaults to `https://docs.bilauitmcuti.com`. |
-
-Deploy:
-
-```bash
-npx wrangler login
-npm run deploy
-```
-
-Health check (not rate limited): `GET /mcp/health` returns HTTP 200.
-
-Licensed under the [MIT License](LICENSE). Data is unofficial and not affiliated with UiTM.
+Licensed under the [MIT License](LICENSE).
