@@ -7,10 +7,10 @@ export const MCP_SERVER_DESCRIPTION =
 
 export const MCP_INSTRUCTIONS = [
   "Unofficial UiTM calendar data — not affiliated with UiTM. Verify important dates before relying on them.",
-  "Call List UiTM sessions & programs first when you need a session ID for calendar or lecture-week tools.",
-  "UiTM groups are A or B. Check if a date is a class day requires group.",
-  "For public holidays, call List public holiday filters first when you need valid year or state values.",
-  "All tools are read-only GET requests. Use limit/compact on large calendar or holiday results.",
+  "Call get_academic_meta first when you need a session ID for get_calendar or get_lecture_weeks.",
+  "UiTM groups are A or B. get_today_status requires a group.",
+  "For public holidays, call get_public_holiday_meta first when you need valid year or state values.",
+  "All tools are read-only. Use limit and compact on large calendar or holiday results.",
 ].join("\n")
 
 const DEFAULT_DOCS_BASE = "https://docs.bilauitmcuti.com"

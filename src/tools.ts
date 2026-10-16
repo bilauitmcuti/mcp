@@ -108,7 +108,7 @@ export function registerBilaTools(server: McpServer, apiBaseUrl: string): void {
     {
       title: "List UiTM sessions & programs",
       description:
-        "Use this first when you need valid session IDs or program options. Filter by Group A or B, or return the full catalog with all=true.",
+        "Use this first when you need valid session IDs or program options. Pass group A or B to limit the catalog, or all=true for every group. No default group is defined in this server; an omitted group stays unset.",
       inputSchema: mcpInputSchema(academicMetaSchema),
       annotations: READ_ONLY_ANNOTATIONS,
     },
@@ -131,7 +131,7 @@ export function registerBilaTools(server: McpServer, apiBaseUrl: string): void {
     {
       title: "Get academic calendar activities",
       description:
-        "Fetch lectures, breaks, exams, and other calendar activities for a session or group. Prefer a specific session from List UiTM sessions & programs. Use limit/compact if the result is large.",
+        "Fetch lectures, breaks, exams, and other calendar activities for a session or group. Prefer a specific session from get_academic_meta. Use limit and compact if the result is large.",
       inputSchema: mcpInputSchema(calendarSchema),
       annotations: READ_ONLY_ANNOTATIONS,
     },
@@ -185,7 +185,7 @@ export function registerBilaTools(server: McpServer, apiBaseUrl: string): void {
     {
       title: "Get lecture week dates",
       description:
-        "Return Week 1–14 start and end dates for one session. Requires a session ID from List UiTM sessions & programs.",
+        "Return Week 1–14 start and end dates for one session. Requires a session ID from get_academic_meta.",
       inputSchema: mcpInputSchema(lectureWeeksSchema),
       annotations: READ_ONLY_ANNOTATIONS,
     },
@@ -223,7 +223,7 @@ export function registerBilaTools(server: McpServer, apiBaseUrl: string): void {
     {
       title: "List Malaysia public holidays",
       description:
-        "Return public holidays for a year, optionally nationwide or for one state. Call List public holiday filters first if you need valid year or state values. Use limit/compact if the result is large.",
+        "Return public holidays for a year, optionally nationwide or for one state. Call get_public_holiday_meta first if you need valid year or state values. state is ignored when coverage is \"all\". Use limit and compact if the result is large.",
       inputSchema: mcpInputSchema(publicHolidaysSchema),
       annotations: READ_ONLY_ANNOTATIONS,
     },
