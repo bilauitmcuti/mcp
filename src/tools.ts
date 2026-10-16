@@ -29,7 +29,7 @@ function textResult(data: unknown) {
   }
 }
 
-function errorResult(error: unknown) {
+export function errorResult(error: unknown) {
   if (error instanceof McpApiError) {
     const parts = [error.message]
     if (error.detail) parts.push(error.detail)
@@ -53,7 +53,7 @@ function errorResult(error: unknown) {
   }
 }
 
-function trimArrayField(
+export function trimArrayField(
   data: unknown,
   fieldNames: string[],
   limit?: number,

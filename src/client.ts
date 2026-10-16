@@ -31,7 +31,7 @@ function serializeQueryValue(value: string | number | boolean): string {
   return String(value)
 }
 
-function buildUrl(baseUrl: string, path: string, query?: Record<string, QueryValue>): string {
+export function buildUrl(baseUrl: string, path: string, query?: Record<string, QueryValue>): string {
   const url = new URL(path.startsWith("/") ? path : `/${path}`, `${baseUrl}/`)
   if (query) {
     for (const [key, value] of Object.entries(query)) {

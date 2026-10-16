@@ -1,0 +1,207 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`tools/list > snapshots tool names and input schemas without calling the network 1`] = `
+[
+  {
+    "inputSchema": {
+      "properties": {
+        "all": {
+          "description": "When true, return sessions and programs for all groups.",
+          "type": "boolean",
+        },
+        "group": {
+          "description": "UiTM academic group: "A" or "B". Omit to use the default group.",
+          "enum": [
+            "A",
+            "B",
+          ],
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "get_academic_meta",
+  },
+  {
+    "inputSchema": {
+      "properties": {
+        "all": {
+          "description": "When true, return the full calendar dataset (large). Prefer a specific session.",
+          "type": "boolean",
+        },
+        "allSessions": {
+          "description": "When true, include every session in the selected group.",
+          "type": "boolean",
+        },
+        "compact": {
+          "description": "When true, drop lengthy description/notes fields from each activity.",
+          "type": "boolean",
+        },
+        "group": {
+          "description": "UiTM academic group: "A" or "B".",
+          "enum": [
+            "A",
+            "B",
+          ],
+          "type": "string",
+        },
+        "limit": {
+          "description": "Max number of activities to return (keeps answers shorter).",
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "program": {
+          "description": "Program filter (mainly Group B), from List UiTM sessions & programs.",
+          "enum": [
+            "All",
+            "PreDiploma",
+            "Diploma",
+            "DiplomaPartTime",
+            "Bachelor",
+            "BachelorPartTime",
+            "Master",
+            "PhD",
+          ],
+          "type": "string",
+        },
+        "session": {
+          "description": "Session id from GET /api/v1/meta (\`sessionOptions\`). Do not hardcode; the published set changes each term.",
+          "type": "string",
+        },
+        "type": {
+          "description": "Activity type: lecture, break, examination, registration, or other.",
+          "enum": [
+            "lecture",
+            "break",
+            "examination",
+            "registration",
+            "other",
+          ],
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "get_calendar",
+  },
+  {
+    "inputSchema": {
+      "properties": {
+        "date": {
+          "description": "Date as YYYY-MM-DD. Leave empty for today.",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "type": "string",
+        },
+        "group": {
+          "description": "Required. UiTM academic group: "A" or "B".",
+          "enum": [
+            "A",
+            "B",
+          ],
+          "type": "string",
+        },
+        "program": {
+          "description": "Program filter (mainly Group B), from List UiTM sessions & programs.",
+          "enum": [
+            "All",
+            "PreDiploma",
+            "Diploma",
+            "DiplomaPartTime",
+            "Bachelor",
+            "BachelorPartTime",
+            "Master",
+            "PhD",
+          ],
+          "type": "string",
+        },
+        "session": {
+          "description": "Session id from GET /api/v1/meta (\`sessionOptions\`). Do not hardcode; the published set changes each term.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "group",
+      ],
+      "type": "object",
+    },
+    "name": "get_today_status",
+  },
+  {
+    "inputSchema": {
+      "properties": {
+        "session": {
+          "description": "Required. Session id from GET /api/v1/meta (\`sessionOptions\`). Do not hardcode; the published set changes each term.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "session",
+      ],
+      "type": "object",
+    },
+    "name": "get_lecture_weeks",
+  },
+  {
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+    },
+    "name": "get_public_holiday_meta",
+  },
+  {
+    "inputSchema": {
+      "properties": {
+        "compact": {
+          "description": "When true, drop lengthy description/notes fields from each holiday.",
+          "type": "boolean",
+        },
+        "coverage": {
+          "description": "Coverage: "all" (every holiday) or "nationwide" (federal only).",
+          "enum": [
+            "all",
+            "nationwide",
+          ],
+          "type": "string",
+        },
+        "limit": {
+          "description": "Max number of holidays to return (keeps answers shorter).",
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "state": {
+          "description": "State/territory slug (e.g. selangor). Ignored when coverage is all.",
+          "enum": [
+            "johor",
+            "kedah",
+            "kelantan",
+            "melaka",
+            "negeri-sembilan",
+            "pahang",
+            "perak",
+            "perlis",
+            "pulau-pinang",
+            "sabah",
+            "sarawak",
+            "selangor",
+            "terengganu",
+            "kuala-lumpur",
+            "labuan",
+            "putrajaya",
+          ],
+          "type": "string",
+        },
+        "year": {
+          "description": "Calendar year from List public holiday filters (yearOptions).",
+          "maximum": 2100,
+          "minimum": 2000,
+          "type": "integer",
+        },
+      },
+      "type": "object",
+    },
+    "name": "get_public_holidays",
+  },
+]
+`;
