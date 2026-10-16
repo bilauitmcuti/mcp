@@ -8,6 +8,18 @@ import {
   STATE_ENUM,
 } from "./enums"
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+function isRealCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return false
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const parsed = new Date(Date.UTC(year, month - 1, day))
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day
+}
+
 export const academicMetaSchema = z.object({
   group: z
     .enum(GROUP_ENUM)
@@ -65,9 +77,16 @@ export const todayStatusSchema = z.object({
   group: z.enum(GROUP_ENUM).describe('Required. UiTM academic group: "A" or "B".'),
   date: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .regex(ISO_DATE, { abort: true, error: "Date must be YYYY-MM-DD." })
+    .superRefine((value, ctx) => {
+      if (isRealCalendarDate(value)) return
+      ctx.addIssue({
+        code: "custom",
+        message: `"${value}" is not a real calendar date. Use YYYY-MM-DD, such as 2026-03-09.`,
+      })
+    })
     .optional()
-    .describe("Date as YYYY-MM-DD. Leave empty for today."),
+    .describe("Real calendar date as YYYY-MM-DD. Leave empty for today."),
   session: z
     .string()
     .optional()
