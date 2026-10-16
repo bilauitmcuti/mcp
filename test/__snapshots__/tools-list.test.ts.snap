@@ -10,7 +10,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
           "type": "boolean",
         },
         "group": {
-          "description": "UiTM academic group: "A" or "B". Omit to use the default group.",
+          "description": "UiTM academic group: "A" or "B". Optional. No default group is defined in this server; the value is forwarded only when set.",
           "enum": [
             "A",
             "B",
@@ -52,7 +52,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
           "type": "integer",
         },
         "program": {
-          "description": "Program filter (mainly Group B), from List UiTM sessions & programs.",
+          "description": "Program filter (mainly Group B), from get_academic_meta.",
           "enum": [
             "All",
             "PreDiploma",
@@ -66,7 +66,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
           "type": "string",
         },
         "session": {
-          "description": "Session id from GET /api/v1/meta (\`sessionOptions\`). Do not hardcode; the published set changes each term.",
+          "description": "Session id from get_academic_meta (sessionOptions). Do not hardcode; the published set changes each term.",
           "type": "string",
         },
         "type": {
@@ -89,7 +89,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
     "inputSchema": {
       "properties": {
         "date": {
-          "description": "Date as YYYY-MM-DD. Leave empty for today.",
+          "description": "Real calendar date as YYYY-MM-DD. Leave empty for today.",
           "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
           "type": "string",
         },
@@ -102,7 +102,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
           "type": "string",
         },
         "program": {
-          "description": "Program filter (mainly Group B), from List UiTM sessions & programs.",
+          "description": "Program filter (mainly Group B), from get_academic_meta.",
           "enum": [
             "All",
             "PreDiploma",
@@ -116,7 +116,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
           "type": "string",
         },
         "session": {
-          "description": "Session id from GET /api/v1/meta (\`sessionOptions\`). Do not hardcode; the published set changes each term.",
+          "description": "Session id from get_academic_meta (sessionOptions). Do not hardcode; the published set changes each term.",
           "type": "string",
         },
       },
@@ -131,7 +131,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
     "inputSchema": {
       "properties": {
         "session": {
-          "description": "Required. Session id from GET /api/v1/meta (\`sessionOptions\`). Do not hardcode; the published set changes each term.",
+          "description": "Required. Session id from get_academic_meta (sessionOptions). Do not hardcode; the published set changes each term.",
           "type": "string",
         },
       },
@@ -157,7 +157,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
           "type": "boolean",
         },
         "coverage": {
-          "description": "Coverage: "all" (every holiday) or "nationwide" (federal only).",
+          "description": "Coverage: "all" returns every holiday and ignores state. "nationwide" returns federal holidays only. Omit to filter with state.",
           "enum": [
             "all",
             "nationwide",
@@ -171,7 +171,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
           "type": "integer",
         },
         "state": {
-          "description": "State/territory slug (e.g. selangor). Ignored when coverage is all.",
+          "description": "State or territory slug from get_public_holiday_meta (for example selangor). Ignored when coverage is "all", which returns every holiday. When coverage is omitted, state includes nationwide holidays plus that territory.",
           "enum": [
             "johor",
             "kedah",
@@ -193,7 +193,7 @@ exports[`tools/list > snapshots tool names and input schemas without calling the
           "type": "string",
         },
         "year": {
-          "description": "Calendar year from List public holiday filters (yearOptions).",
+          "description": "Calendar year from get_public_holiday_meta (yearOptions).",
           "maximum": 2100,
           "minimum": 2000,
           "type": "integer",

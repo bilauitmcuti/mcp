@@ -48,6 +48,7 @@ describe("apiGet", () => {
     expect(body).toEqual({ ok: true })
     expect(fetchMock).toHaveBeenCalledWith(buildUrl("https://api.example.com", "/api/v1/meta", query), {
       method: "GET",
+      signal: expect.any(AbortSignal),
       headers: {
         Accept: "application/json",
         "User-Agent": `${MCP_SERVER_NAME}-mcp/${MCP_SERVER_VERSION}`,
