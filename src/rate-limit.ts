@@ -25,6 +25,12 @@ function windowIdForPeriod(period: number, nowSec = Math.floor(Date.now() / 1000
   return Math.floor(nowSec / period)
 }
 
+function pruneLocalCounters(activeWindowId: number): void {
+  for (const [key, entry] of localCounters) {
+    if (entry.windowId !== activeWindowId) localCounters.delete(key)
+  }
+}
+
 export function getClientKey(request: Request): string {
   const cf = request.headers.get("cf-connecting-ip")
   if (cf?.trim()) return cf.trim()
@@ -37,26 +43,28 @@ export function getClientKey(request: Request): string {
 function bumpLocalCounter(key: string): number {
   const { limit, period } = RATE_LIMIT_CONFIG.endpoint
   const windowId = windowIdForPeriod(period)
+  pruneLocalCounters(windowId)
   const entry = localCounters.get(key)
-  if (!entry || entry.windowId !== windowId) {
+  if (!entry) {
     localCounters.set(key, { windowId, count: 1 })
-    return Math.max(0, limit - 1)
+    return limit - 1
   }
   entry.count += 1
   return Math.max(0, limit - entry.count)
 }
 
-function buildRateLimitHeaders(remaining: number, nowSec = Math.floor(Date.now() / 1000)): Record<string, string> {
+function buildRateLimitHeaders(remaining?: number, nowSec = Math.floor(Date.now() / 1000)): Record<string, string> {
   const { limit, period } = RATE_LIMIT_CONFIG.endpoint
   const reset = windowResetUnix(nowSec, period)
   const retryAfter = Math.max(1, reset - nowSec)
-  return {
+  const headers: Record<string, string> = {
     "X-RateLimit-Limit": String(limit),
-    "X-RateLimit-Remaining": String(remaining),
     "X-RateLimit-Reset": String(reset),
     "RateLimit-Policy": RATE_LIMIT_POLICY_HEADER,
-    RateLimit: `"endpoint";r=${remaining};t=${retryAfter}`,
+    RateLimit: remaining === undefined ? `"endpoint";t=${retryAfter}` : `"endpoint";r=${remaining};t=${retryAfter}`,
   }
+  if (remaining !== undefined) headers["X-RateLimit-Remaining"] = String(remaining)
+  return headers
 }
 
 async function limitOrPass(limiter: RateLimitBinding | undefined, key: string): Promise<boolean> {
@@ -89,16 +97,17 @@ export async function enforceRateLimits(request: Request, env: Env): Promise<Rat
     const pathname = new URL(request.url).pathname
     const client = getClientKey(request)
     const baseKey = `${client}:${pathname}`
+    pruneLocalCounters(windowIdForPeriod(RATE_LIMIT_CONFIG.endpoint.period))
 
     if (!(await limitOrPass(env.API_RATE_LIMIT, baseKey))) {
       console.warn("[mcp] rate limit exceeded", { pathname, client: client.slice(0, 12) })
       return { ok: false, response: rateLimitResponse() }
     }
 
-    return {
-      ok: true,
-      headers: buildRateLimitHeaders(bumpLocalCounter(baseKey)),
-    }
+    // The Workers binding only returns success, so its remaining count is not this Map.
+    if (env.API_RATE_LIMIT) return { ok: true, headers: buildRateLimitHeaders() }
+
+    return { ok: true, headers: buildRateLimitHeaders(bumpLocalCounter(baseKey)) }
   } catch (error) {
     console.warn("[mcp] rate limiter unavailable (fail-open)", { error })
     return { ok: true, headers: { "RateLimit-Policy": RATE_LIMIT_POLICY_HEADER } }
