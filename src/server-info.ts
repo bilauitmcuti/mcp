@@ -23,7 +23,7 @@ export function buildMcpServerInfo(docsBaseUrl = DEFAULT_DOCS_BASE) {
     version: MCP_SERVER_VERSION,
     title: MCP_SERVER_TITLE,
     description: MCP_SERVER_DESCRIPTION,
-    websiteUrl: `${docs}/docs/mcp`,
+    websiteUrl: `${docs}/mcp-server`,
     icons: [
       { src: `${iconBase}/icon-16.png`, mimeType: "image/png", sizes: ["16x16"] },
       { src: `${iconBase}/icon-32.png`, mimeType: "image/png", sizes: ["32x32"] },

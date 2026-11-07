@@ -8,7 +8,7 @@ import { sanitizeToolsListResponseBody } from "./tool-input-schema"
 import { registerBilaTools } from "./tools"
 import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from "./version"
 
-const DOCS_MCP_URL = "https://docs.bilauitmcuti.com/docs/mcp"
+const DOCS_MCP_URL = "https://docs.bilauitmcuti.com/mcp-server"
 const X_ROBOTS_NOINDEX = "noindex, nofollow"
 
 function withRobots(response: Response): Response {

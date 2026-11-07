@@ -8,7 +8,7 @@ A hosted [Model Context Protocol](https://modelcontextprotocol.io) server for th
 
 **URL:** `https://mcp.bilauitmcuti.com/mcp` (Streamable HTTP)
 
-Docs: [docs.bilauitmcuti.com/docs/mcp](https://docs.bilauitmcuti.com/docs/mcp)
+Docs: [docs.bilauitmcuti.com/mcp-server](https://docs.bilauitmcuti.com/mcp-server)
 
 It answers:
 
@@ -37,7 +37,7 @@ Point a remote MCP client at `https://mcp.bilauitmcuti.com/mcp`. Leave authentic
 
 ### Cursor
 
-`.cursor/mcp.json`:
+Save as `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global), enable the server under **Cursor Settings → MCP**, then restart Cursor.
 
 ```json
 {
@@ -98,8 +98,15 @@ url = "https://mcp.bilauitmcuti.com/mcp"
 
 ### OpenCode
 
+```bash
+opencode mcp add bilauitmcuti --url https://mcp.bilauitmcuti.com/mcp
+```
+
+Or in `opencode.json`:
+
 ```json
 {
+  "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "bilauitmcuti": {
       "type": "remote",
@@ -110,12 +117,13 @@ url = "https://mcp.bilauitmcuti.com/mcp"
 }
 ```
 
-### ChatGPT and Claude on the web
+### Connect in chat (Claude, Grok, Grok Bot)
 
-Add a custom connector with URL `https://mcp.bilauitmcuti.com/mcp` and no authentication.
+Use a custom connector and choose **None** for authentication.
 
-- [ChatGPT — custom connectors](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt-beta)
-- [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
+- **Claude:** Settings → Connectors → **Add custom connector**. Name `Bila UiTM Cuti`, URL `https://mcp.bilauitmcuti.com/mcp`, leave OAuth empty, then enable it in chat. See [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+- **Grok:** [grok.com/connectors](https://grok.com/connectors) → **New Connector** → **Custom**, paste the URL. See [xAI Connectors](https://docs.x.ai/grok/connectors).
+- **Grok Bot (Cursor's cloud agent):** in chat, say `Add this MCP server: https://mcp.bilauitmcuti.com/mcp`, then confirm. See [Grok Bot — Connect an app](https://docs.x.ai/grok-bot/computer-and-apps).
 
 ### Clients without remote MCP
 
@@ -298,14 +306,14 @@ Logs in this server record:
 
 The client address is `cf-connecting-ip`, otherwise the first `X-Forwarded-For` value, otherwise `anonymous`. The full address is the rate-limit key. Only the rate-limit log line stores the 12-character prefix.
 
-- [Privacy](https://docs.bilauitmcuti.com/docs/mcp/privacy)
-- [Terms](https://docs.bilauitmcuti.com/docs/mcp/terms)
+- [Privacy](https://docs.bilauitmcuti.com/mcp-server/privacy)
+- [Terms](https://docs.bilauitmcuti.com/mcp-server/terms)
 
 ---
 
 ## Rate limit
 
-`/mcp` allows **500 requests per 60-second window per client IP** (the key also includes the path). `GET /mcp/health` is not limited.
+`/mcp` shares the public API limits: **500 requests per 60-second window per client IP** (the key also includes the path), plus a heavy bucket for full-dataset queries. See [Rate limits](https://docs.bilauitmcuti.com/getting-started#rate-limits). `GET /mcp/health` is not limited; uptime monitors should use it and expect `200`.
 
 Allowed responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`. A `429` response also includes `Retry-After` (seconds until the window resets). Wait that long, then try again.
 
@@ -346,10 +354,18 @@ npx @modelcontextprotocol/inspector https://mcp.bilauitmcuti.com/mcp
 
 | What you see | What to do |
 | --- | --- |
-| Tools don't show up | Restart the client and confirm the URL is `https://mcp.bilauitmcuti.com/mcp` with no authentication. |
-| Can't connect | Use Streamable HTTP and the `/mcp` path. |
+| Tools don't show up | Remove the existing `bilauitmcuti` server or connector, add it again with `https://mcp.bilauitmcuti.com/mcp`, then restart the client and refresh the tools list. |
+| Can't connect | Use Streamable HTTP with `type: "http"` where supported, and the exact `https://mcp.bilauitmcuti.com/mcp` URL. |
 | Browser open of `/mcp` | MCP calls use `POST`. Use `GET /mcp/health` to check that the host is up. This server returns `405` for methods other than `GET`, `POST`, and `OPTIONS` on `/mcp`. |
 | Rate limited (`429`) | Wait for `Retry-After`, then retry. |
+
+---
+
+## Changelog
+
+- **1.0.2** — server instructions and Blue B connector icons; privacy and terms under `/mcp-server/`.
+- **1.0.1** — improved tool titles and parameter descriptions.
+- **1.0.0** — remote Streamable HTTP server with calendar and public-holiday tools.
 
 ---
 
@@ -366,7 +382,7 @@ This server is free to use. If it helps you, you can support the work:
 
 Questions: [hello@bilauitmcuti.com](mailto:hello@bilauitmcuti.com)
 
-- [Privacy](https://docs.bilauitmcuti.com/docs/mcp/privacy)
-- [Terms](https://docs.bilauitmcuti.com/docs/mcp/terms)
+- [Privacy](https://docs.bilauitmcuti.com/mcp-server/privacy)
+- [Terms](https://docs.bilauitmcuti.com/mcp-server/terms)
 
 Licensed under the [MIT License](LICENSE).
