@@ -1,23 +1,23 @@
-# Bila UiTM Cuti — MCP Server
+# Bila UiTM Cuti MCP server
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Version 1.0.2](https://img.shields.io/badge/version-1.0.2-blue)](package.json)
 ![Remote MCP, no authentication](https://img.shields.io/badge/MCP-remote_%7C_no_auth-2ea44f)
 
-A hosted [Model Context Protocol](https://modelcontextprotocol.io) server for the **UiTM academic calendar** and **Malaysia public holidays**. It is read-only and public: connect a client to the URL, with no API key and no account.
+A hosted [Model Context Protocol](https://modelcontextprotocol.io) server for the UiTM academic calendar and Malaysia public holidays. It is read-only and public. Point a client at the URL. No API key, no account.
 
 **URL:** `https://mcp.bilauitmcuti.com/mcp` (Streamable HTTP)
 
 Docs: [docs.bilauitmcuti.com/mcp-server](https://docs.bilauitmcuti.com/mcp-server)
 
-It answers:
+You can ask it:
 
 - Which sessions and programs are published, and when lectures, breaks, registration, and exams fall
 - Whether a date is a class day, a break, an exam week, or a study week
 - Week 1–14 dates for one session
 - Malaysia public holidays for a year, nationwide or for one state
 
-Data is unofficial and not affiliated with UiTM. Verify important dates before you rely on them.
+The data is unofficial and not affiliated with UiTM. Check any date that matters before you rely on it.
 
 ---
 
@@ -37,7 +37,7 @@ Point a remote MCP client at `https://mcp.bilauitmcuti.com/mcp`. Leave authentic
 
 ### Cursor
 
-Save as `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global), enable the server under **Cursor Settings → MCP**, then restart Cursor.
+Save as `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global). Turn the server on under **Cursor Settings → MCP**, then restart Cursor.
 
 ```json
 {
@@ -121,7 +121,7 @@ Or in `opencode.json`:
 
 Use a custom connector and choose **None** for authentication.
 
-- **Claude:** Settings → Connectors → **Add custom connector**. Name `Bila UiTM Cuti`, URL `https://mcp.bilauitmcuti.com/mcp`, leave OAuth empty, then enable it in chat. See [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+- **Claude:** Settings → Connectors → **Add custom connector**. Name `Bila UiTM Cuti`, URL `https://mcp.bilauitmcuti.com/mcp`, leave OAuth empty, then turn it on in chat. See [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 - **Grok:** [grok.com/connectors](https://grok.com/connectors) → **New Connector** → **Custom**, paste the URL. See [xAI Connectors](https://docs.x.ai/grok/connectors).
 - **Grok Bot (Cursor's cloud agent):** in chat, say `Add this MCP server: https://mcp.bilauitmcuti.com/mcp`, then confirm. See [Grok Bot — Connect an app](https://docs.x.ai/grok-bot/computer-and-apps).
 
@@ -144,13 +144,19 @@ npx mcp-remote https://mcp.bilauitmcuti.com/mcp
 }
 ```
 
+### Agent workflow
+
+When a client connects to this URL, it gets the server instructions: which tool to call, that a session id has to come from `get_academic_meta`, and how to phrase the answer. That text is on the host only after the next deploy. Until then, a connected client still gets the shorter instructions.
+
+`plugin/bila-uitm-cuti` is the optional Claude install of the same workflow. Zip that folder and upload it under Customize → Plugins, or from this repo run `claude --plugin-dir plugin/bila-uitm-cuti`. Other clients do not need the plugin.
+
 ---
 
 ## Tools
 
 Six tools. Each one is read-only. A successful call returns indented JSON text. A non-array object is also `structuredContent`. Any other payload is wrapped as `{ "result": ... }`.
 
-Call `get_academic_meta` before calendar or lecture-week tools when you need a session id. Call `get_public_holiday_meta` before holiday tools when you need a published year or state. Session ids change each term.
+Call `get_academic_meta` before a calendar or lecture-week tool when you need a session id. Call `get_public_holiday_meta` before a holiday tool when you need a published year or state. Session ids change each term.
 
 Omitted optional fields are not sent.
 
@@ -171,28 +177,28 @@ Omitted optional fields are not sent.
 
 ### Large results
 
-`get_calendar` and `get_public_holidays` accept `limit` and `compact`. Those arguments trim the reply in this server before it is returned.
+`get_calendar` and `get_public_holidays` take `limit` and `compact`. This server trims the reply with those arguments before it sends it back.
 
 | Tool | Arrays trimmed |
 | --- | --- |
 | `get_calendar` | `activities`, `sessions`, `data` |
 | `get_public_holidays` | `holidays`, `data`, `items` |
 
-- `limit` slices each of those arrays to that many items.
-- `compact: true` removes `description`, `notes`, and `detail` from each object row. Other rows are left as they are.
+- `limit` keeps that many items from each of those arrays.
+- `compact: true` drops `description`, `notes`, and `detail` from each object row. Other rows stay as they are.
 - When `limit` is set and an array is longer than `limit`, the result also includes `truncated: true`, `returned` (items kept), and `total` (length before the slice).
 - If more than one of those arrays is longer than `limit`, `returned` and `total` come from the last trimmed array, in the order listed above.
 - `compact` on its own does not add `truncated`, `returned`, or `total`.
 
 ### `get_academic_meta`
 
-List sessions and programs. Use this first for session ids.
+Lists sessions and programs. Call this first when you need a session id.
 
 Upstream: `GET /api/v1/meta` on `https://api.bilauitmcuti.com`.
 
 | Parameter | Required | Notes |
 | --- | --- | --- |
-| `group` | no | `A` or `B`. Omit it and the field is not sent. The parameter description says that uses the default group. |
+| `group` | no | `A` or `B`. Leave it out and the field is not sent. The parameter description says that uses the default group. |
 | `all` | no | Boolean. `true` returns sessions and programs for every group. |
 
 Ask: "What UiTM sessions and programs are published for every group?"
@@ -218,14 +224,14 @@ Ask: "List lecture activities for the current Group B session, and keep the list
 
 ### `get_today_status`
 
-Whether a date is a class day, a break, an exam week, or a study week. `group` is required. Omit `date` to use today.
+Says whether a date is a class day, a break, an exam week, or a study week. `group` is required. Leave `date` out to use today.
 
 Upstream: `GET /api/v1/today`.
 
 | Parameter | Required | Notes |
 | --- | --- | --- |
 | `group` | yes | `A` or `B`. |
-| `date` | no | `YYYY-MM-DD`. Omit it and the field is not sent. The parameter description says that means today. |
+| `date` | no | `YYYY-MM-DD`. Leave it out and the field is not sent. The parameter description says that means today. |
 | `session` | no | Session id from `get_academic_meta`. The published set changes each term. |
 | `program` | no | See allowed values. Mainly Group B. |
 
@@ -253,7 +259,7 @@ Ask: "Which years and states can I use for Malaysia public holidays?"
 
 ### `get_public_holidays`
 
-Public holidays for a year, optionally nationwide or for one state. Use `limit` and `compact` when the reply is large.
+Public holidays for a year, nationwide or for one state. Use `limit` and `compact` when the reply is large.
 
 Upstream: `GET /api/v1/public-holiday`.
 
@@ -269,13 +275,13 @@ Ask: "List public holidays in Selangor for 2026."
 
 ### Errors
 
-A failed call is an error result. The text is the message, plus `detail` and `Retry-After` seconds when the upstream API sent them. An API error's `structuredContent` includes `error`, `detail`, `status`, and `retryAfter`.
+A failed call comes back as an error result. The text is the message, plus `detail` and `Retry-After` seconds when the upstream API sent them. An API error's `structuredContent` includes `error`, `detail`, `status`, and `retryAfter`.
 
 ---
 
 ## Example questions
 
-Session ids in examples go stale. Take the current id from `get_academic_meta`.
+Session ids in the examples go stale. Take the current id from `get_academic_meta`.
 
 - What UiTM sessions are available for Group A?
 - When does lecture week 1 start for session B-20264?
@@ -288,17 +294,17 @@ Session ids in examples go stale. Take the current id from `get_academic_meta`.
 
 ## Data
 
-Calendar and holiday data is read from [`https://api.bilauitmcuti.com`](https://api.bilauitmcuti.com) (`GET /api/v1/...`) on each call.
+Each call reads calendar and holiday data from [`https://api.bilauitmcuti.com`](https://api.bilauitmcuti.com) (`GET /api/v1/...`).
 
-The project is unofficial and not affiliated with UiTM. The published session list changes each term, so resolve session ids with `get_academic_meta` instead of reusing an old id. Confirm dates that matter before you rely on them.
+The project is unofficial and not affiliated with UiTM. The published session list changes each term, so get the session id from `get_academic_meta` instead of reusing an old one. Check any date that matters before you rely on it.
 
 ---
 
 ## Privacy
 
-No authentication and no user accounts. Tool arguments are forwarded as query parameters to the public API.
+No authentication and no user accounts. Tool arguments are sent on as query parameters to the public API.
 
-Logs in this server record:
+This server logs:
 
 - Each request: HTTP method, JSON-RPC method, status, and elapsed time
 - Each tool call: tool name and elapsed time; on failure, the upstream status
@@ -313,7 +319,7 @@ The client address is `cf-connecting-ip`, otherwise the first `X-Forwarded-For` 
 
 ## Rate limit
 
-`/mcp` shares the public API limits: **500 requests per 60-second window per client IP** (the key also includes the path), plus a heavy bucket for full-dataset queries. See [Rate limits](https://docs.bilauitmcuti.com/getting-started#rate-limits). `GET /mcp/health` is not limited; uptime monitors should use it and expect `200`.
+`/mcp` shares the public API limits: **500 requests per 60-second window per client IP** (the key also includes the path), plus a heavy bucket for full-dataset queries. See [Rate limits](https://docs.bilauitmcuti.com/getting-started#rate-limits). `GET /mcp/health` is not limited. Uptime monitors should use it and expect `200`.
 
 Allowed responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`. A `429` response also includes `Retry-After` (seconds until the window resets). Wait that long, then try again.
 

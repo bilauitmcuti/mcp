@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "bilauitmcuti": {
+      "type": "http",
+      "url": "https://mcp.bilauitmcuti.com/mcp"
+    }
+  }
+}

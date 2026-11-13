@@ -1,0 +1,11 @@
+{
+  "name": "bila-uitm-cuti",
+  "displayName": "Bila UiTM Cuti",
+  "version": "1.0.2",
+  "description": "Answer UiTM academic-calendar and Malaysia public-holiday questions from the Bila UiTM Cuti connector.",
+  "author": {
+    "name": "Bila UiTM Cuti",
+    "url": "https://docs.bilauitmcuti.com/mcp-server"
+  },
+  "license": "MIT"
+}
