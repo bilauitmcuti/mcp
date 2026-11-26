@@ -46,21 +46,34 @@ export function signInPage(): Response {
   return page(
     "Sign in — Bila UiTM Cuti",
     `<h1>Sign in</h1>
-<p>Use Google to connect this MCP server in Cursor or Claude.</p>
+<p>Use Google to connect this MCP server in Cursor, Grok, or Claude.</p>
 <button class="primary" id="google" type="button">Continue with Google</button>
 <p id="error"></p>
+<p id="hint"></p>
 <script>
   const params = new URLSearchParams(location.search)
   const signed = params.get("sig") ? location.search.slice(1) : ""
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
   async function resume() {
     if (!signed) return
-    const session = await fetch("/api/auth/get-session", { credentials: "include" }).then((response) => response.json()).catch(() => null)
-    if (!session?.user) return
-    const authorize = new URLSearchParams(signed)
-    for (const key of ["sig", "exp", "ba_param"]) authorize.delete(key)
-    location.href = "/api/auth/oauth2/authorize?" + authorize.toString()
+    const hint = document.getElementById("hint")
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const session = await fetch("/api/auth/get-session", { credentials: "include" }).then((response) => response.json()).catch(() => null)
+      if (session?.user) {
+        const authorize = new URLSearchParams(signed)
+        for (const key of ["sig", "exp", "ba_param"]) authorize.delete(key)
+        location.href = "/api/auth/oauth2/authorize?" + authorize.toString()
+        return
+      }
+      await sleep(350)
+    }
+    if (hint) {
+      hint.textContent =
+        "Google sign-in may have succeeded in another window. Open this page in Safari or Chrome (copy the URL), click Continue with Google once, then return to Cursor or Grok."
+    }
   }
   document.getElementById("google").onclick = async () => {
+    document.getElementById("error").textContent = ""
     const body = { provider: "google", callbackURL: location.href }
     if (signed) body.oauth_query = signed
     const response = await fetch("/api/auth/sign-in/social", {

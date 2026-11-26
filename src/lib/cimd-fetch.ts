@@ -202,11 +202,23 @@ export async function fetchClientMetadataResource(input: RequestInfo | URL, init
   request.signal.throwIfAborted()
   await addressesFor(url, request.signal)
 
+  const headers = new Headers(request.headers)
+  if (!headers.has("accept")) headers.set("accept", "application/json")
+  if (!headers.has("user-agent")) headers.set("user-agent", "bilauitmcuti-cimd")
+  const outbound = new Request(request, { headers })
+
   try {
-    return await fetchWithSubrequest(url, request)
+    const response = await fetchWithSubrequest(url, outbound)
+    if (response.status === 200) return response
+    const host = classifyHost(url.hostname)
+    if (host.literal === "fqdn") {
+      const fallback = await requestOverHttp11(url.hostname, url, outbound.method, outbound.headers, outbound.signal)
+      if (fallback.status === 200) return fallback
+    }
+    return response
   } catch (error) {
     const host = classifyHost(url.hostname)
     if (host.literal !== "fqdn") throw error
-    return requestOverHttp11(url.hostname, url, request.method, request.headers, request.signal)
+    return requestOverHttp11(url.hostname, url, outbound.method, outbound.headers, outbound.signal)
   }
 }
