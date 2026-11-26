@@ -129,8 +129,13 @@ Use a custom connector and choose OAuth when the client asks. Sign in with Googl
 
 A client that only speaks stdio can proxy the hosted server with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
 
+This host uses **CIMD** (client metadata URLs), not Dynamic Client Registration. `mcp-remote` must pass the client’s metadata URL or it fails with *does not support dynamic client registration*.
+
+**Cursor** (via `mcp-remote`):
+
 ```bash
-npx mcp-remote https://mcp.bilauitmcuti.com/mcp
+npx mcp-remote https://mcp.bilauitmcuti.com/mcp \
+  --client-metadata-url https://cursor.com/oauth/mcp-client.json
 ```
 
 ```json
@@ -138,11 +143,19 @@ npx mcp-remote https://mcp.bilauitmcuti.com/mcp
   "mcpServers": {
     "bilauitmcuti": {
       "command": "npx",
-      "args": ["mcp-remote", "https://mcp.bilauitmcuti.com/mcp"]
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.bilauitmcuti.com/mcp",
+        "--client-metadata-url",
+        "https://cursor.com/oauth/mcp-client.json"
+      ]
     }
   }
 }
 ```
+
+Prefer **native remote HTTP** in Cursor when possible (`type: "http"`, same URL)—it uses the same Cursor CIMD document without `mcp-remote`.
 
 ### Agent workflow
 
@@ -412,6 +425,7 @@ The inspector walks through sign-in and `tools/list` with a valid token. For a q
 | **Grok web** “Finishing sign-in…” / sign-in could not be completed | **Delete** the connector at grok.com/connectors, add the URL again, allow the **popup**, complete Google + consent. Grok Bot can work while grok.com chat still has a stale connector—fix both separately. |
 | Claude ✅ but Cursor / Grok web ❌ | Expected when only some connectors were re-added with OAuth. Server is the same; each app stores auth mode separately. |
 | `invalid_client` while fetching client metadata | The Worker could not load that client's HTTPS metadata URL. Retry from the client. This is not a per-client allowlist. |
+| `mcp-remote`: **does not support dynamic client registration** | Add `--client-metadata-url` for your client: Cursor `https://cursor.com/oauth/mcp-client.json`, Grok `https://grok.com/oauth/mcp-client.json`. This server does not expose DCR by design (MCP 2026-07-28 + CIMD). |
 | Better Auth dashboard says API key validation failed | Set `BETTER_AUTH_API_KEY` (dashboard “Copy key”) as a Wrangler secret and redeploy. MCP clients do not use this key. |
 | Can't connect | Use Streamable HTTP with `type: "http"` where supported, and the exact `https://mcp.bilauitmcuti.com/mcp` URL. |
 | Browser open of `/mcp` | MCP calls use `POST`. Use `GET /mcp/health` to check that the host is up. This server returns `405` for methods other than `GET`, `POST`, and `OPTIONS` on `/mcp`. |
