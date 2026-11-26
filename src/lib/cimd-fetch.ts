@@ -161,10 +161,15 @@ function toResponse(bytes: Uint8Array, method: string): Response {
   return new Response(body, { status, headers })
 }
 
-async function requestPinned(url: URL, address: string, method: string, headers: Headers, signal?: AbortSignal): Promise<Response> {
-  const serverName = classifyHost(url.hostname).literal === "fqdn" ? url.hostname : undefined
-  const socket = connect({ hostname: address, port: 443 }, { allowHalfOpen: true, secureTransport: "starttls" })
-  const tls = socket.startTls(serverName ? { expectedServerHostname: serverName } : undefined)
+async function requestOverHttp11(
+  connectHost: string,
+  url: URL,
+  method: string,
+  headers: Headers,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const socket = connect({ hostname: connectHost, port: 443 }, { allowHalfOpen: true, secureTransport: "starttls" })
+  const tls = socket.startTls()
   const writer = tls.writable.getWriter()
   const path = `${url.pathname}${url.search}` || "/"
   const payload = `${method} ${path} HTTP/1.1\r\n${requestHeaders(headers, url.host)}\r\n\r\n`
@@ -174,7 +179,20 @@ async function requestPinned(url: URL, address: string, method: string, headers:
   return toResponse(bytes, method)
 }
 
-/** Workers CIMD fetch: one public DNS answer, TLS pinned to that address, redirects not followed. */
+async function fetchWithSubrequest(url: URL, request: Request): Promise<Response> {
+  return fetch(url, {
+    method: request.method,
+    headers: request.headers,
+    redirect: "manual",
+    signal: request.signal,
+  })
+}
+
+/**
+ * Workers CIMD fetch: DoH validates public-routable DNS, then uses a subrequest with redirects
+ * disabled. Raw socket + IP pinning breaks SNI on the Workers edge (workerd#6903); manual HTTP/1.1
+ * over `connect()` often returns an empty body in dev and on edge.
+ */
 export async function fetchClientMetadataResource(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const request = new Request(input, init)
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -182,14 +200,13 @@ export async function fetchClientMetadataResource(input: RequestInfo | URL, init
   }
   const url = httpsUrl(request)
   request.signal.throwIfAborted()
-  const addresses = await addressesFor(url, request.signal)
-  let lastError: unknown
-  for (const address of addresses) {
-    try {
-      return await requestPinned(url, address.address, request.method, request.headers, request.signal)
-    } catch (error) {
-      lastError = error
-    }
+  await addressesFor(url, request.signal)
+
+  try {
+    return await fetchWithSubrequest(url, request)
+  } catch (error) {
+    const host = classifyHost(url.hostname)
+    if (host.literal !== "fqdn") throw error
+    return requestOverHttp11(url.hostname, url, request.method, request.headers, request.signal)
   }
-  throw lastError instanceof Error ? lastError : new TypeError("metadata request failed")
 }

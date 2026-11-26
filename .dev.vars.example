@@ -4,10 +4,15 @@
 # Google Cloud Console → OAuth client (Web application):
 #   Authorized redirect URI: http://localhost:8787/api/auth/callback/google
 #   (Add https://<your-mcp-host>/api/auth/callback/google for production.)
-# Never commit client secrets, BETTER_AUTH_SECRET, or AUTH_MIGRATE_SECRET.
+# Never commit client secrets, BETTER_AUTH_SECRET, AUTH_MIGRATE_SECRET, or BETTER_AUTH_API_KEY.
 
 BETTER_AUTH_SECRET=replace-with-32-plus-char-random-string
 AUTH_MIGRATE_SECRET=replace-with-one-time-migrate-bearer
+
+# Better Auth dashboard only (operator). MCP clients do not use this key.
+# Copy it from the dashboard onboarding screen, then:
+#   npx wrangler secret put BETTER_AUTH_API_KEY
+BETTER_AUTH_API_KEY=
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=

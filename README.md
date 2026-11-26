@@ -406,6 +406,9 @@ The inspector walks through sign-in and `tools/list` with a valid token. For a q
 | Sign-in fails / no Google button | On a self-hosted copy, the operator must set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (Wrangler secrets). Redirect URI must be `https://<host>/api/auth/callback/google`. |
 | Consent page says request expired | Start again from the MCP client (do not bookmark `/consent`). |
 | **503** `Authentication is not configured` | Worker is missing `BETTER_AUTH_SECRET` or D1 `DB`. Not expected on the public hosted URL. |
+| Works in one client, fails in another | Same server for Cursor, Claude, Grok, Codex, VS Code, and `mcp-remote`. Remove that client's connector and add `https://mcp.bilauitmcuti.com/mcp` again so it starts a fresh OAuth session. |
+| `invalid_client` while fetching client metadata | The Worker could not load that client's HTTPS metadata URL. Retry from the client. This is not a per-client allowlist. |
+| Better Auth dashboard says API key validation failed | Set `BETTER_AUTH_API_KEY` (dashboard “Copy key”) as a Wrangler secret and redeploy. MCP clients do not use this key. |
 | Can't connect | Use Streamable HTTP with `type: "http"` where supported, and the exact `https://mcp.bilauitmcuti.com/mcp` URL. |
 | Browser open of `/mcp` | MCP calls use `POST`. Use `GET /mcp/health` to check that the host is up. This server returns `405` for methods other than `GET`, `POST`, and `OPTIONS` on `/mcp`. |
 | Rate limited (`429`) | Wait for `Retry-After`, then retry. |
@@ -431,6 +434,7 @@ This repository is public. **Do not commit** `.dev.vars`, production secrets, or
 | `GOOGLE_CLIENT_ID` | Wrangler secret / `.dev.vars` | Never commit. |
 | `GOOGLE_CLIENT_SECRET` | Wrangler secret / `.dev.vars` | Never commit. |
 | `AUTH_MIGRATE_SECRET` | Wrangler secret / `.dev.vars` | Optional. Bearer for `POST /api/auth/__migrate` only. If unset, that route returns **404**. |
+| `BETTER_AUTH_API_KEY` | Wrangler secret / `.dev.vars` | Better Auth dashboard only. Copy from the dashboard onboarding screen. Required for **Retry connection**. MCP clients (Cursor, Claude, Grok, and the rest) never send this key. |
 | `BETTER_AUTH_URL` | `wrangler.toml` `[vars]` | Public origin (`https://mcp.bilauitmcuti.com`). Safe to commit. |
 | `MCP_API_BASE_URL`, `DOCS_BASE_URL` | `wrangler.toml` `[vars]` | Upstream API and docs. |
 
@@ -442,7 +446,11 @@ npx wrangler secret put GOOGLE_CLIENT_ID
 npx wrangler secret put GOOGLE_CLIENT_SECRET
 # optional:
 npx wrangler secret put AUTH_MIGRATE_SECRET
+# Better Auth dashboard only (not used by MCP clients):
+npx wrangler secret put BETTER_AUTH_API_KEY
 ```
+
+One MCP URL (`https://mcp.bilauitmcuti.com/mcp`) is the client config for Cursor, Claude, Grok, Claude Code, Codex, VS Code, OpenCode, and `mcp-remote`. OAuth uses each client's own metadata URL. There is no per-client secret on the Worker.
 
 Local dev: copy `.dev.vars.example` → `.dev.vars` and fill placeholders.
 

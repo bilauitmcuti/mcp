@@ -17,4 +17,6 @@ export interface Env {
   GOOGLE_CLIENT_SECRET?: string
   /** Bearer token required for POST /api/auth/__migrate */
   AUTH_MIGRATE_SECRET?: string
+  /** Better Auth dashboard / infra — from the dashboard “Copy key” step. Not used by MCP clients. */
+  BETTER_AUTH_API_KEY?: string
 }
