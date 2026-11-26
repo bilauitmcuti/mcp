@@ -3,9 +3,29 @@ import type { Env, RateLimitBinding } from "./env"
 
 export const RATE_LIMIT_CONFIG = {
   endpoint: { limit: 500, period: 60 },
+  // Cloudflare rate-limit periods are only 10s or 60s. 10/10s is the same rate as 30/30s.
+  standard: { limit: 10, period: 10 },
 } as const
 
-const RATE_LIMIT_POLICY_HEADER = `"endpoint";q=${RATE_LIMIT_CONFIG.endpoint.limit};w=${RATE_LIMIT_CONFIG.endpoint.period}`
+const STUDENT_EMAIL_SUFFIX = "@student.uitm.edu.my"
+
+export interface McpCaller {
+  sub: string
+  email?: string
+}
+
+interface LimitConfig {
+  limit: number
+  period: number
+}
+
+export function isStudentAccount(email: string | undefined): boolean {
+  return email?.trim().toLowerCase().endsWith(STUDENT_EMAIL_SUFFIX) ?? false
+}
+
+function policyHeader(config: LimitConfig): string {
+  return `"endpoint";q=${config.limit};w=${config.period}`
+}
 
 const localCounters = new Map<string, { windowId: number; count: number }>()
 
@@ -40,8 +60,8 @@ export function getClientKey(request: Request): string {
   return "anonymous"
 }
 
-function bumpLocalCounter(key: string): number {
-  const { limit, period } = RATE_LIMIT_CONFIG.endpoint
+function bumpLocalCounter(key: string, config: LimitConfig): number {
+  const { limit, period } = config
   const windowId = windowIdForPeriod(period)
   pruneLocalCounters(windowId)
   const entry = localCounters.get(key)
@@ -53,14 +73,18 @@ function bumpLocalCounter(key: string): number {
   return Math.max(0, limit - entry.count)
 }
 
-function buildRateLimitHeaders(remaining?: number, nowSec = Math.floor(Date.now() / 1000)): Record<string, string> {
-  const { limit, period } = RATE_LIMIT_CONFIG.endpoint
+function buildRateLimitHeaders(
+  config: LimitConfig = RATE_LIMIT_CONFIG.endpoint,
+  remaining?: number,
+  nowSec = Math.floor(Date.now() / 1000),
+): Record<string, string> {
+  const { limit, period } = config
   const reset = windowResetUnix(nowSec, period)
   const retryAfter = Math.max(1, reset - nowSec)
   const headers: Record<string, string> = {
     "X-RateLimit-Limit": String(limit),
     "X-RateLimit-Reset": String(reset),
-    "RateLimit-Policy": RATE_LIMIT_POLICY_HEADER,
+    "RateLimit-Policy": policyHeader(config),
     RateLimit: remaining === undefined ? `"endpoint";t=${retryAfter}` : `"endpoint";r=${remaining};t=${retryAfter}`,
   }
   if (remaining !== undefined) headers["X-RateLimit-Remaining"] = String(remaining)
@@ -73,11 +97,11 @@ async function limitOrPass(limiter: RateLimitBinding | undefined, key: string): 
   return success
 }
 
-function rateLimitResponse(): Response {
-  const retryAfter = secondsUntilWindowReset(RATE_LIMIT_CONFIG.endpoint.period)
+function rateLimitResponse(config: LimitConfig = RATE_LIMIT_CONFIG.endpoint): Response {
+  const retryAfter = secondsUntilWindowReset(config.period)
   const headers = {
     ...mcpCorsHeaders(),
-    ...buildRateLimitHeaders(0),
+    ...buildRateLimitHeaders(config, 0),
     "X-Content-Type-Options": "nosniff",
     "Cache-Control": CACHE_CONTROL_ERROR,
     "Retry-After": String(retryAfter),
@@ -92,24 +116,30 @@ function rateLimitResponse(): Response {
   )
 }
 
-export async function enforceRateLimits(request: Request, env: Env): Promise<RateLimitOutcome> {
+export async function enforceRateLimits(
+  request: Request,
+  env: Env,
+  caller?: McpCaller,
+): Promise<RateLimitOutcome> {
   try {
     const pathname = new URL(request.url).pathname
-    const client = getClientKey(request)
+    const student = caller ? isStudentAccount(caller.email) : false
+    const config = caller && !student ? RATE_LIMIT_CONFIG.standard : RATE_LIMIT_CONFIG.endpoint
+    const limiter = caller && !student ? env.STANDARD_RATE_LIMIT : env.API_RATE_LIMIT
+    const client = caller ? `${student ? "student" : "standard"}:${caller.sub}` : getClientKey(request)
     const baseKey = `${client}:${pathname}`
-    pruneLocalCounters(windowIdForPeriod(RATE_LIMIT_CONFIG.endpoint.period))
+    pruneLocalCounters(windowIdForPeriod(config.period))
 
-    if (!(await limitOrPass(env.API_RATE_LIMIT, baseKey))) {
+    if (!(await limitOrPass(limiter, baseKey))) {
       console.warn("[mcp] rate limit exceeded", { pathname, client: client.slice(0, 12) })
-      return { ok: false, response: rateLimitResponse() }
+      return { ok: false, response: rateLimitResponse(config) }
     }
 
-    // The Workers binding only returns success, so its remaining count is not this Map.
-    if (env.API_RATE_LIMIT) return { ok: true, headers: buildRateLimitHeaders() }
+    if (limiter) return { ok: true, headers: buildRateLimitHeaders(config) }
 
-    return { ok: true, headers: buildRateLimitHeaders(bumpLocalCounter(baseKey)) }
+    return { ok: true, headers: buildRateLimitHeaders(config, bumpLocalCounter(baseKey, config)) }
   } catch (error) {
     console.warn("[mcp] rate limiter unavailable (fail-open)", { error })
-    return { ok: true, headers: { "RateLimit-Policy": RATE_LIMIT_POLICY_HEADER } }
+    return { ok: true, headers: { "RateLimit-Policy": policyHeader(RATE_LIMIT_CONFIG.endpoint) } }
   }
 }

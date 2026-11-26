@@ -1,11 +1,7 @@
-import { createMcpHandler } from "mcp-handler"
+import { waitUntil } from "cloudflare:workers"
 
 import { mcpCorsHeaders } from "./cors"
 import type { Env } from "./env"
-import { enforceRateLimits } from "./rate-limit"
-import { mcpHandlerOptions } from "./server-info"
-import { sanitizeToolsListResponseBody } from "./tool-input-schema"
-import { registerBilaTools } from "./tools"
 import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from "./version"
 
 const DOCS_MCP_URL = "https://docs.bilauitmcuti.com/mcp-server"
@@ -63,6 +59,26 @@ export default {
       return withRobots(healthResponse())
     }
 
+    if (
+      pathname === "/sign-in" ||
+      pathname === "/consent" ||
+      pathname.startsWith("/.well-known/") ||
+      pathname === "/api/auth" ||
+      pathname.startsWith("/api/auth/")
+    ) {
+      const [{ handleAuthMigrate, handleAuthRequest }, { consentPage, signInPage }] = await Promise.all([
+        import("./lib/auth-http"),
+        import("./lib/auth-pages"),
+      ])
+      const authRuntime = { backgroundTasks: waitUntil }
+      if (pathname === "/sign-in") return withRobots(signInPage())
+      if (pathname === "/consent") return withRobots(await consentPage(request, env, authRuntime))
+      if (pathname === "/api/auth/__migrate") {
+        return withRobots(await handleAuthMigrate(request, env, authRuntime))
+      }
+      return withRobots(await handleAuthRequest(request, env, authRuntime))
+    }
+
     if (pathname !== "/mcp") {
       return withRobots(new Response("Not Found", { status: 404 }))
     }
@@ -83,30 +99,19 @@ export default {
       return withRobots(new Response("Method Not Allowed", { status: 405 }))
     }
 
-    const started = Date.now()
-    const rpcMethod = await readRpcMethod(request)
-    const rl = await enforceRateLimits(request, env)
-    if (!rl.ok) {
-      console.warn("[mcp] rate limited", { method: request.method, ms: Date.now() - started })
-      return withRobots(rl.response)
+    if (!env.DB || !env.BETTER_AUTH_SECRET?.trim()) {
+      return withRobots(
+        Response.json(
+          { error: "Authentication is not configured" },
+          { status: 503, headers: { ...mcpCorsHeaders(), "cache-control": "private, no-store" } },
+        ),
+      )
     }
 
-    const apiBase = (env.MCP_API_BASE_URL ?? "https://api.bilauitmcuti.com").replace(/\/+$/, "")
-    const docsBase = (env.DOCS_BASE_URL ?? "https://docs.bilauitmcuti.com").replace(/\/+$/, "")
-    const mcpHandler = createMcpHandler(
-      (server) => {
-        registerBilaTools(server, apiBase)
-      },
-      mcpHandlerOptions(docsBase),
-    )
-
-    const response = await mcpHandler(request)
-    const headers = new Headers(response.headers)
-    for (const [key, value] of Object.entries(rl.headers)) headers.set(key, value)
-    for (const [key, value] of Object.entries(mcpCorsHeaders())) headers.set(key, value)
-
-    const body = rpcMethod === "tools/list" ? sanitizeToolsListResponseBody(await response.text()) : response.body
-    const finalResponse = new Response(body, { status: response.status, headers })
+    const started = Date.now()
+    const rpcMethod = await readRpcMethod(request)
+    const { handleProtectedMcp } = await import("./lib/mcp-guard")
+    const finalResponse = await handleProtectedMcp(request, env, { backgroundTasks: waitUntil }, rpcMethod)
 
     console.info("[mcp] request", {
       method: request.method,

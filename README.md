@@ -2,9 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Version 1.0.2](https://img.shields.io/badge/version-1.0.2-blue)](package.json)
-![Remote MCP, no authentication](https://img.shields.io/badge/MCP-remote_%7C_no_auth-2ea44f)
+![Remote MCP, Google sign-in](https://img.shields.io/badge/MCP-remote_%7C_Google_sign--in-2ea44f)
 
-A hosted [Model Context Protocol](https://modelcontextprotocol.io) server for the UiTM academic calendar and Malaysia public holidays. It is read-only and public. Point a client at the URL. No API key, no account.
+A hosted [Model Context Protocol](https://modelcontextprotocol.io) server for the UiTM academic calendar and Malaysia public holidays. It is read-only. Clients sign in with Google before they can call tools.
 
 **URL:** `https://mcp.bilauitmcuti.com/mcp` (Streamable HTTP)
 
@@ -23,7 +23,7 @@ The data is unofficial and not affiliated with UiTM. Check any date that matters
 
 ## Connect
 
-Point a remote MCP client at `https://mcp.bilauitmcuti.com/mcp`. Leave authentication empty.
+Point a remote MCP client at `https://mcp.bilauitmcuti.com/mcp`. On the first call, the server answers **401** with a `WWW-Authenticate` challenge; the client opens a browser for Google sign-in and OAuth consent. After that it sends a **Bearer** access token on each `/mcp` request. You do not put API keys in client config—only the URL. See [Authentication](#authentication).
 
 ```json
 {
@@ -119,9 +119,9 @@ Or in `opencode.json`:
 
 ### Connect in chat (Claude, Grok, Grok Bot)
 
-Use a custom connector and choose **None** for authentication.
+Use a custom connector and choose OAuth when the client asks. Sign in with Google on `https://mcp.bilauitmcuti.com`.
 
-- **Claude:** Settings → Connectors → **Add custom connector**. Name `Bila UiTM Cuti`, URL `https://mcp.bilauitmcuti.com/mcp`, leave OAuth empty, then turn it on in chat. See [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+- **Claude:** Settings → Connectors → **Add custom connector**. Name `Bila UiTM Cuti`, URL `https://mcp.bilauitmcuti.com/mcp`, then sign in with Google when Claude asks. See [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 - **Grok:** [grok.com/connectors](https://grok.com/connectors) → **New Connector** → **Custom**, paste the URL. See [xAI Connectors](https://docs.x.ai/grok/connectors).
 - **Grok Bot (Cursor's cloud agent):** in chat, say `Add this MCP server: https://mcp.bilauitmcuti.com/mcp`, then confirm. See [Grok Bot — Connect an app](https://docs.x.ai/grok-bot/computer-and-apps).
 
@@ -149,6 +149,54 @@ npx mcp-remote https://mcp.bilauitmcuti.com/mcp
 When a client connects to this URL, it gets the server instructions: which tool to call, that a session id has to come from `get_academic_meta`, and how to phrase the answer. That text is on the host only after the next deploy. Until then, a connected client still gets the shorter instructions.
 
 `plugin/bila-uitm-cuti` is the optional Claude install of the same workflow. Zip that folder and upload it under Customize → Plugins, or from this repo run `claude --plugin-dir plugin/bila-uitm-cuti`. Other clients do not need the plugin.
+
+---
+
+## Authentication
+
+The hosted MCP endpoint (`POST` and `GET` on `/mcp`) requires a valid OAuth access token. **Google sign-in** is the only social provider when the operator has configured Google OAuth secrets on the Worker (production at `mcp.bilauitmcuti.com` has this). Auth is implemented with [Better Auth](https://www.better-auth.com) and the MCP/OAuth plugins (`@better-auth/mcp`, CIMD for client metadata).
+
+### Client users (connect only)
+
+- Put **only** `https://mcp.bilauitmcuti.com/mcp` in your MCP config. No repo secrets, no manual bearer tokens in JSON.
+- First tool call without a token → **401** and `WWW-Authenticate`. Your client should start OAuth automatically.
+- In browsers: [Sign in](https://mcp.bilauitmcuti.com/sign-in) uses **Continue with Google**, then `/consent` approves the MCP client.
+- Chat connectors (Claude, Grok): choose **OAuth** when asked; sign in with Google on `https://mcp.bilauitmcuti.com`.
+- Any Google account can sign in on the hosted server (OAuth consent screen is in **Production**). You do **not** need a UiTM email to connect—`@student.uitm.edu.my` only affects [rate limits](#rate-limit).
+
+### OAuth flow (typical)
+
+1. MCP client calls `/mcp` without `Authorization`.
+2. Server responds **401** with `WWW-Authenticate` pointing at this host’s OAuth protected-resource metadata (`/.well-known/`).
+3. Client registers or resolves itself (CIMD / dynamic client metadata) and starts the authorization code flow.
+4. User signs in with Google and accepts the consent screen.
+5. Client stores access (and refresh) tokens and retries `/mcp` with `Authorization: Bearer <access_token>`.
+
+`GET /mcp/health` stays **unauthenticated** for uptime checks.
+
+### Auth-related routes
+
+| Path | Auth required | Role |
+| --- | --- | --- |
+| `/mcp` | Yes (Bearer) | MCP Streamable HTTP |
+| `/mcp/health` | No | Health JSON |
+| `/sign-in` | No | Google sign-in page |
+| `/consent` | No | OAuth consent for MCP clients |
+| `/api/auth/*` | Varies | Better Auth (sessions, OAuth, `callback/google`, etc.) |
+| `/.well-known/*` | No | OAuth/OIDC discovery for MCP clients |
+| `/` | No | Redirects to docs |
+
+### Misconfigured deployments
+
+If `BETTER_AUTH_SECRET` or the D1 `DB` binding is missing, `/mcp` returns **503** `Authentication is not configured` instead of **401**. The public hosted URL is fully configured; this mainly affects forks or local dev without secrets.
+
+### What the server stores
+
+After sign-in, Better Auth persists accounts, sessions, and **encrypted** OAuth tokens in D1. MCP tool calls still forward read-only query parameters to the public `api.bilauitmcuti.com` API—see [Privacy](#privacy).
+
+### Rate limits tied to identity
+
+Limits apply after auth, keyed off the token subject. UiTM student Google accounts (`@student.uitm.edu.my`, or Google Workspace `hd=student.uitm.edu.my`) get the higher tier. Details: [Rate limit](#rate-limit).
 
 ---
 
@@ -302,7 +350,7 @@ The project is unofficial and not affiliated with UiTM. The published session li
 
 ## Privacy
 
-No authentication and no user accounts. Tool arguments are sent on as query parameters to the public API.
+`/mcp` requires Google OAuth sign-in ([Authentication](#authentication)). Better Auth stores the account, session, and encrypted OAuth tokens in D1. Tool arguments are still sent on as query parameters to the public API.
 
 This server logs:
 
@@ -319,7 +367,7 @@ The client address is `cf-connecting-ip`, otherwise the first `X-Forwarded-For` 
 
 ## Rate limit
 
-`/mcp` shares the public API limits: **500 requests per 60-second window per client IP** (the key also includes the path), plus a heavy bucket for full-dataset queries. See [Rate limits](https://docs.bilauitmcuti.com/getting-started#rate-limits). `GET /mcp/health` is not limited. Uptime monitors should use it and expect `200`.
+After sign-in, `/mcp` is limited by the token subject. `@student.uitm.edu.my` accounts get **500 requests per 60 seconds**. Other Google accounts get **10 requests per 10 seconds** (Cloudflare rate-limit windows are 10s or 60s, so this is the same pace as 30 requests per 30 seconds). `GET /mcp/health` stays public and is not limited. Uptime monitors should use it and expect `200`.
 
 Allowed responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`. A `429` response also includes `Retry-After` (seconds until the window resets). Wait that long, then try again.
 
@@ -339,20 +387,13 @@ curl -sS 'https://mcp.bilauitmcuti.com/mcp/health'
 
 That body is what `GET /mcp/health` returned from the hosted server. `name` and `version` come from this server (`bilauitmcuti`, `1.0.2`).
 
-List tools:
-
-```bash
-curl -sS -X POST 'https://mcp.bilauitmcuti.com/mcp' \
-  -H 'Content-Type: application/json' \
-  -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-```
-
-Or open the hosted URL in the MCP Inspector:
+List tools (requires OAuth; a plain `curl` without a Bearer token gets **401**):
 
 ```bash
 npx @modelcontextprotocol/inspector https://mcp.bilauitmcuti.com/mcp
 ```
+
+The inspector walks through sign-in and `tools/list` with a valid token. For a quick host check without auth, use `GET /mcp/health` only.
 
 ---
 
@@ -360,15 +401,98 @@ npx @modelcontextprotocol/inspector https://mcp.bilauitmcuti.com/mcp
 
 | What you see | What to do |
 | --- | --- |
-| Tools don't show up | Remove the existing `bilauitmcuti` server or connector, add it again with `https://mcp.bilauitmcuti.com/mcp`, then restart the client and refresh the tools list. |
+| Tools don't show up | Remove the existing `bilauitmcuti` server or connector, add it again with `https://mcp.bilauitmcuti.com/mcp`, complete Google sign-in and consent, then restart the client and refresh the tools list. |
+| **401** on `/mcp` | Expected until OAuth finishes. Let the client open the browser challenge; or sign in at `https://mcp.bilauitmcuti.com/sign-in` and reconnect. |
+| Sign-in fails / no Google button | On a self-hosted copy, the operator must set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (Wrangler secrets). Redirect URI must be `https://<host>/api/auth/callback/google`. |
+| Consent page says request expired | Start again from the MCP client (do not bookmark `/consent`). |
+| **503** `Authentication is not configured` | Worker is missing `BETTER_AUTH_SECRET` or D1 `DB`. Not expected on the public hosted URL. |
 | Can't connect | Use Streamable HTTP with `type: "http"` where supported, and the exact `https://mcp.bilauitmcuti.com/mcp` URL. |
 | Browser open of `/mcp` | MCP calls use `POST`. Use `GET /mcp/health` to check that the host is up. This server returns `405` for methods other than `GET`, `POST`, and `OPTIONS` on `/mcp`. |
 | Rate limited (`429`) | Wait for `Retry-After`, then retry. |
 
 ---
 
+## Develop and deploy
+
+This repository is public. **Do not commit** `.dev.vars`, production secrets, or live OAuth client values. Use [`.dev.vars.example`](.dev.vars.example) as a template.
+
+### Prerequisites
+
+- Node.js 20+, `npm ci`
+- Cloudflare account and [Wrangler](https://developers.cloudflare.com/workers/wrangler/)
+- D1 database with `binding = "DB"` in [`wrangler.toml`](wrangler.toml) (apply SQL under [`migrations/`](migrations/))
+- Google Cloud **OAuth 2.0 Client ID** (Web application) for sign-in
+
+### Secrets and vars
+
+| Name | Where it lives | Notes |
+| --- | --- | --- |
+| `BETTER_AUTH_SECRET` | Wrangler secret / `.dev.vars` | Random string, 32+ characters. Signs sessions and encrypts OAuth tokens. |
+| `GOOGLE_CLIENT_ID` | Wrangler secret / `.dev.vars` | Never commit. |
+| `GOOGLE_CLIENT_SECRET` | Wrangler secret / `.dev.vars` | Never commit. |
+| `AUTH_MIGRATE_SECRET` | Wrangler secret / `.dev.vars` | Optional. Bearer for `POST /api/auth/__migrate` only. If unset, that route returns **404**. |
+| `BETTER_AUTH_URL` | `wrangler.toml` `[vars]` | Public origin (`https://mcp.bilauitmcuti.com`). Safe to commit. |
+| `MCP_API_BASE_URL`, `DOCS_BASE_URL` | `wrangler.toml` `[vars]` | Upstream API and docs. |
+
+Production secrets:
+
+```bash
+npx wrangler secret put BETTER_AUTH_SECRET
+npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+# optional:
+npx wrangler secret put AUTH_MIGRATE_SECRET
+```
+
+Local dev: copy `.dev.vars.example` → `.dev.vars` and fill placeholders.
+
+### Google OAuth console
+
+For each deployment host, add an **Authorized redirect URI**:
+
+```text
+https://<your-mcp-host>/api/auth/callback/google
+```
+
+Local Wrangler (`npm run dev`) typically uses `http://localhost:8787/api/auth/callback/google`. Match the host shown in the terminal if it differs.
+
+If redirect URIs or client IDs do not match the Worker’s `BETTER_AUTH_URL`, sign-in loops or `redirect_uri_mismatch` errors are common.
+
+### D1 schema
+
+```bash
+# local
+npx wrangler d1 migrations apply bilauitmcuti-auth --local
+
+# production
+npx wrangler d1 migrations apply bilauitmcuti-auth --remote
+```
+
+With `AUTH_MIGRATE_SECRET` set, you can also run Better Auth’s migrator once:
+
+```bash
+curl -sS -X POST 'https://<your-mcp-host>/api/auth/__migrate' \
+  -H 'Authorization: Bearer <your-migrate-secret>'
+```
+
+Replace `<your-migrate-secret>` with the value from your secret store—not from the repo.
+
+### Commands
+
+```bash
+npm run dev      # wrangler dev
+npm run test     # vitest
+npm run typecheck
+npm run deploy   # wrangler deploy
+```
+
+Serving on another public hostname requires adding it to `trustedOrigins` in [`src/lib/auth.ts`](src/lib/auth.ts).
+
+---
+
 ## Changelog
 
+- **Docs** — README authentication and develop/deploy sections (no secrets in repo).
 - **1.0.2** — server instructions and Blue B connector icons; privacy and terms under `/mcp-server/`.
 - **1.0.1** — improved tool titles and parameter descriptions.
 - **1.0.0** — remote Streamable HTTP server with calendar and public-holiday tools.

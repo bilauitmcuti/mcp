@@ -12,6 +12,13 @@ routes = [
 [vars]
 MCP_API_BASE_URL = "https://api.bilauitmcuti.com"
 DOCS_BASE_URL = "https://docs.bilauitmcuti.com"
+BETTER_AUTH_URL = "https://mcp.bilauitmcuti.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bilauitmcuti-auth"
+database_id = "d2588c1d-1fe9-4318-9bec-5199f09c9eb5"
+migrations_dir = "migrations"
 
 [observability]
 enabled = true
@@ -20,3 +27,8 @@ enabled = true
 name = "API_RATE_LIMIT"
 namespace_id = "2001"
 simple = { limit = 500, period = 60 }
+
+[[ratelimits]]
+name = "STANDARD_RATE_LIMIT"
+namespace_id = "2002"
+simple = { limit = 10, period = 10 }

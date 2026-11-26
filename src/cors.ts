@@ -1,5 +1,5 @@
 const RATE_LIMIT_EXPOSE_HEADERS =
-  "X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, RateLimit, RateLimit-Policy, Retry-After"
+  "X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, RateLimit, RateLimit-Policy, Retry-After, WWW-Authenticate"
 
 export const CACHE_CONTROL_ERROR = "private, no-store"
 

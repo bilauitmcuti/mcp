@@ -1,0 +1,13 @@
+# Copy to .dev.vars for `wrangler dev` (not committed).
+# Production: `npx wrangler secret put <NAME>`
+#
+# Google Cloud Console → OAuth client (Web application):
+#   Authorized redirect URI: http://localhost:8787/api/auth/callback/google
+#   (Add https://<your-mcp-host>/api/auth/callback/google for production.)
+# Never commit client secrets, BETTER_AUTH_SECRET, or AUTH_MIGRATE_SECRET.
+
+BETTER_AUTH_SECRET=replace-with-32-plus-char-random-string
+AUTH_MIGRATE_SECRET=replace-with-one-time-migrate-bearer
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
