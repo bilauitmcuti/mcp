@@ -80,7 +80,9 @@ export function createAuth(request: Request, env: Env, hooks?: AuthRuntimeHooks)
       "http://127.0.0.1:8787",
     ],
     plugins: [
-      dash(),
+      dash({
+        apiKey: env.BETTER_AUTH_API_KEY?.trim() || undefined,
+      }),
       apiKey({
         defaultPrefix: "bilauitmcuti",
       }),
