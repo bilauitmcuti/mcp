@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import worker from "../src/index"
+import { createCalendarMcpHandler } from "../src/mcp-app"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -29,7 +30,7 @@ describe("tools/list", () => {
     vi.stubGlobal("fetch", fetchMock)
     vi.spyOn(console, "info").mockImplementation(() => {})
 
-    const response = await worker.fetch(
+    const unauthenticated = await worker.fetch(
       new Request("https://mcp.bilauitmcuti.com/mcp", {
         method: "POST",
         headers: {
@@ -44,6 +45,23 @@ describe("tools/list", () => {
         }),
       }),
       { MCP_API_BASE_URL: "https://api.example.test" },
+    )
+    expect(unauthenticated.status).toBe(503)
+
+    const response = await createCalendarMcpHandler("https://api.example.test", "https://docs.example.test")(
+      new Request("https://mcp.bilauitmcuti.com/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          params: {},
+        }),
+      }),
     )
 
     expect(response.status).toBe(200)
