@@ -35,9 +35,24 @@ Point a remote MCP client at `https://mcp.bilauitmcuti.com/mcp`. On the first ca
 }
 ```
 
+Each app identifies itself with its own Client ID Metadata Document. You still paste only the MCP URL. Better Auth loads that document during authorize and accepts the redirect listed there. A port on `http://127.0.0.1` or `http://localhost` may differ when the published URI has no port ([RFC 8252](https://www.rfc-editor.org/rfc/rfc8252.html#section-8.3)). Any other path is `invalid_redirect`.
+
+| Client | What you configure | Client metadata URL | Redirect this server accepts |
+| --- | --- | --- | --- |
+| Cursor | URL below | `https://cursor.com/oauth/mcp-client.json` | `http://localhost:8787/callback`, `http://127.0.0.1:8787/callback` |
+| Claude chat | Custom connector, choose **OAuth** | `https://claude.ai/oauth/mcp-oauth-client-metadata` | `https://claude.ai/api/mcp/auth_callback` |
+| Claude Code | `claude mcp add --transport http` | `https://claude.ai/oauth/claude-code-client-metadata` | `http://127.0.0.1:<port>/callback` or `http://localhost:<port>/callback` |
+| VS Code (Copilot) | `.vscode/mcp.json` | `https://vscode.dev/oauth/client-metadata.json` | `http://127.0.0.1:33418/` or `https://vscode.dev/redirect` |
+| Codex | `codex mcp add --url` | `https://chatgpt.com/oauth/codex/client.json` | `http://127.0.0.1:<port>/callback` or `http://localhost:<port>/callback` |
+| OpenCode | `mcp.servers` remote URL, then `/mcps` | `https://opencode.ai/oauth/opencode/client.json` | `http://127.0.0.1:<port>/callback` or `http://localhost:<port>/callback` |
+| Grok web | grok.com custom connector | `https://grok.com/oauth/mcp-client.json` | `https://grok.com/connectors-oauth-exchange-code/` |
+| Grok Bot | “Add this MCP server” in chat | `https://cursor.com/oauth/mcp-client.json` | `https://www.cursor.com/bot/mcp/oauth/callback` |
+
+Do not use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote). It listens on `/oauth/callback` at a derived port. That URI is not in these documents, so authorize returns `/api/auth/error?error=invalid_redirect`. This host does not offer Dynamic Client Registration.
+
 ### Cursor
 
-Save as `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global). Turn the server on under **Cursor Settings → MCP**, then restart Cursor.
+Save as `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global). Turn the server on under **Cursor Settings → MCP**, then restart Cursor. Keep port **8787** free; that is Cursor’s callback.
 
 ```json
 {
@@ -102,16 +117,17 @@ url = "https://mcp.bilauitmcuti.com/mcp"
 opencode mcp add bilauitmcuti --url https://mcp.bilauitmcuti.com/mcp
 ```
 
-Or in `opencode.json`:
+If the server needs sign-in, run `/mcps` and authenticate, or `opencode mcp auth bilauitmcuti`. Current OpenCode puts remote servers under `mcp.servers`:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "bilauitmcuti": {
-      "type": "remote",
-      "url": "https://mcp.bilauitmcuti.com/mcp",
-      "enabled": true
+    "servers": {
+      "bilauitmcuti": {
+        "type": "remote",
+        "url": "https://mcp.bilauitmcuti.com/mcp"
+      }
     }
   }
 }
@@ -124,38 +140,6 @@ Use a custom connector and choose OAuth when the client asks. Sign in with Googl
 - **Claude:** Settings → Connectors → **Add custom connector**. Name `Bila UiTM Cuti`, URL `https://mcp.bilauitmcuti.com/mcp`. When Claude asks how to authenticate, choose **OAuth** (Google sign-in on this host)—not “no sign-in”. **Disconnect alone does not change that choice**; delete the connector and add it again if you picked the wrong option earlier. See [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 - **Grok (web chat):** [grok.com/connectors](https://grok.com/connectors) → **New Connector** → **Custom**, URL `https://mcp.bilauitmcuti.com/mcp`. Complete OAuth in the popup (allow popups for grok.com). This is **not** the same setup as **Grok Bot**—delete the old connector and add again if it still thinks sign-in is off. See [xAI Connectors](https://docs.x.ai/grok/connectors).
 - **Grok Bot (Cursor's cloud agent):** in chat, say `Add this MCP server: https://mcp.bilauitmcuti.com/mcp`, then confirm. See [Grok Bot — Connect an app](https://docs.x.ai/grok-bot/computer-and-apps).
-
-### Clients without remote MCP
-
-A client that only speaks stdio can proxy the hosted server with [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
-
-This host uses **CIMD** (client metadata URLs), not Dynamic Client Registration. `mcp-remote` must pass the client’s metadata URL or it fails with *does not support dynamic client registration*.
-
-**Cursor** (via `mcp-remote`):
-
-```bash
-npx mcp-remote https://mcp.bilauitmcuti.com/mcp \
-  --client-metadata-url https://cursor.com/oauth/mcp-client.json
-```
-
-```json
-{
-  "mcpServers": {
-    "bilauitmcuti": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.bilauitmcuti.com/mcp",
-        "--client-metadata-url",
-        "https://cursor.com/oauth/mcp-client.json"
-      ]
-    }
-  }
-}
-```
-
-Prefer **native remote HTTP** in Cursor when possible (`type: "http"`, same URL)—it uses the same Cursor CIMD document without `mcp-remote`.
 
 ### Agent workflow
 
@@ -419,13 +403,13 @@ The inspector walks through sign-in and `tools/list` with a valid token. For a q
 | Sign-in fails / no Google button | On a self-hosted copy, the operator must set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (Wrangler secrets). Redirect URI must be `https://<host>/api/auth/callback/google`. |
 | Consent page says request expired | Start again from the MCP client (do not bookmark `/consent`). |
 | **503** `Authentication is not configured` | Worker is missing `BETTER_AUTH_SECRET` or D1 `DB`. Not expected on the public hosted URL. |
-| Works in one client, fails in another | Same server for Cursor, Claude, Grok, Codex, VS Code, and `mcp-remote`. Remove that client's connector and add `https://mcp.bilauitmcuti.com/mcp` again so it starts a fresh OAuth session. |
+| Works in one client, fails in another | Same server for Cursor, Claude, Grok, Codex, VS Code, and OpenCode. Remove that client's connector and add `https://mcp.bilauitmcuti.com/mcp` again so it starts a fresh OAuth session. |
 | Claude: “set up as **not requiring sign-in**, but the server asked for sign-in (401)” | The connector still has the old **no sign-in** setting (from before OAuth, or from choosing no auth). **Delete** the custom connector, add `https://mcp.bilauitmcuti.com/mcp` again, and choose **OAuth** when Claude asks. Turn-off / disconnect is not enough. Anthropic support ref (e.g. `ofid_…`) is for their side if it still fails after re-adding. |
-| **Cursor** MCP red error / no sign-in button | Remove `bilauitmcuti` from **Cursor Settings → MCP**, quit Cursor fully, add `https://mcp.bilauitmcuti.com/mcp` again, then **Connect** / log in. OAuth returns to **`http://localhost:8787/callback`**—ensure nothing else uses port **8787**. Update Cursor. Fallback: proxy with [`mcp-remote`](#clients-without-remote-mcp) instead of `type: "http"`. |
+| **Cursor** MCP red error / no sign-in button | Use only `"url": "https://mcp.bilauitmcuti.com/mcp"` (no `mcp-remote`). Remove the server in **Cursor Settings → MCP**, quit Cursor, add that URL again, then **Connect**. OAuth returns to **`http://localhost:8787/callback`**—nothing else should use port **8787**. |
 | **Grok web** “Finishing sign-in…” / sign-in could not be completed | **Delete** the connector at grok.com/connectors, add the URL again, allow the **popup**, complete Google + consent. Grok Bot can work while grok.com chat still has a stale connector—fix both separately. |
 | Claude ✅ but Cursor / Grok web ❌ | Expected when only some connectors were re-added with OAuth. Server is the same; each app stores auth mode separately. |
 | `invalid_client` while fetching client metadata | The Worker could not load that client's HTTPS metadata URL. Retry from the client. This is not a per-client allowlist. |
-| `mcp-remote`: **does not support dynamic client registration** | Add `--client-metadata-url` for your client: Cursor `https://cursor.com/oauth/mcp-client.json`, Grok `https://grok.com/oauth/mcp-client.json`. This server does not expose DCR by design (MCP 2026-07-28 + CIMD). |
+| `invalid_redirect` / `invalid redirect uri` with `mcp-remote` | Cursor’s metadata does not list `mcp-remote`’s `/oauth/callback` port. Drop the proxy and use the URL-only config above. |
 | Better Auth dashboard says API key validation failed | Set `BETTER_AUTH_API_KEY` (dashboard “Copy key”) as a Wrangler secret and redeploy. MCP clients do not use this key. |
 | Can't connect | Use Streamable HTTP with `type: "http"` where supported, and the exact `https://mcp.bilauitmcuti.com/mcp` URL. |
 | Browser open of `/mcp` | MCP calls use `POST`. Use `GET /mcp/health` to check that the host is up. This server returns `405` for methods other than `GET`, `POST`, and `OPTIONS` on `/mcp`. |
@@ -468,7 +452,9 @@ npx wrangler secret put AUTH_MIGRATE_SECRET
 npx wrangler secret put BETTER_AUTH_API_KEY
 ```
 
-One MCP URL (`https://mcp.bilauitmcuti.com/mcp`) is the client config for Cursor, Claude, Grok, Claude Code, Codex, VS Code, OpenCode, and `mcp-remote`. OAuth uses each client's own metadata URL. There is no per-client secret on the Worker.
+One MCP URL (`https://mcp.bilauitmcuti.com/mcp`) is the client config for Cursor, Claude, Grok, Claude Code, Codex, VS Code, and OpenCode. OAuth uses each client's own metadata URL from the [Connect](#connect) table. There is no per-client secret on the Worker. Do not proxy this host with `mcp-remote`.
+
+To recheck redirects without CI calling production, open authorize for a listed redirect (expect `/sign-in`) and for `http://127.0.0.1:16289/oauth/callback` with Cursor’s client id (expect `invalid_redirect`). The same allow/deny cases are in `test/cimd-redirect.test.ts`.
 
 Local dev: copy `.dev.vars.example` → `.dev.vars` and fill placeholders.
 
