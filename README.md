@@ -121,7 +121,7 @@ Or in `opencode.json`:
 
 Use a custom connector and choose OAuth when the client asks. Sign in with Google on `https://mcp.bilauitmcuti.com`.
 
-- **Claude:** Settings → Connectors → **Add custom connector**. Name `Bila UiTM Cuti`, URL `https://mcp.bilauitmcuti.com/mcp`, then sign in with Google when Claude asks. See [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+- **Claude:** Settings → Connectors → **Add custom connector**. Name `Bila UiTM Cuti`, URL `https://mcp.bilauitmcuti.com/mcp`. When Claude asks how to authenticate, choose **OAuth** (Google sign-in on this host)—not “no sign-in”. **Disconnect alone does not change that choice**; delete the connector and add it again if you picked the wrong option earlier. See [Claude — remote MCP connectors](https://support.anthropic.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
 - **Grok:** [grok.com/connectors](https://grok.com/connectors) → **New Connector** → **Custom**, paste the URL. See [xAI Connectors](https://docs.x.ai/grok/connectors).
 - **Grok Bot (Cursor's cloud agent):** in chat, say `Add this MCP server: https://mcp.bilauitmcuti.com/mcp`, then confirm. See [Grok Bot — Connect an app](https://docs.x.ai/grok-bot/computer-and-apps).
 
@@ -407,6 +407,7 @@ The inspector walks through sign-in and `tools/list` with a valid token. For a q
 | Consent page says request expired | Start again from the MCP client (do not bookmark `/consent`). |
 | **503** `Authentication is not configured` | Worker is missing `BETTER_AUTH_SECRET` or D1 `DB`. Not expected on the public hosted URL. |
 | Works in one client, fails in another | Same server for Cursor, Claude, Grok, Codex, VS Code, and `mcp-remote`. Remove that client's connector and add `https://mcp.bilauitmcuti.com/mcp` again so it starts a fresh OAuth session. |
+| Claude: “set up as **not requiring sign-in**, but the server asked for sign-in (401)” | The connector still has the old **no sign-in** setting (from before OAuth, or from choosing no auth). **Delete** the custom connector, add `https://mcp.bilauitmcuti.com/mcp` again, and choose **OAuth** when Claude asks. Turn-off / disconnect is not enough. Anthropic support ref (e.g. `ofid_…`) is for their side if it still fails after re-adding. |
 | `invalid_client` while fetching client metadata | The Worker could not load that client's HTTPS metadata URL. Retry from the client. This is not a per-client allowlist. |
 | Better Auth dashboard says API key validation failed | Set `BETTER_AUTH_API_KEY` (dashboard “Copy key”) as a Wrangler secret and redeploy. MCP clients do not use this key. |
 | Can't connect | Use Streamable HTTP with `type: "http"` where supported, and the exact `https://mcp.bilauitmcuti.com/mcp` URL. |

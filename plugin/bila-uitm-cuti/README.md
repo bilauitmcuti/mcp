@@ -4,7 +4,7 @@ Answer questions about the UiTM academic calendar and Malaysia public holidays f
 
 ## Use it
 
-Connect the bundled Bila UiTM Cuti connector. It needs no account and no API key. Then ask in plain language. The skill tells the agent which tool to call, to resolve the current session id first, and to answer with the date, group, and activity instead of raw JSON.
+Connect the bundled Bila UiTM Cuti connector at `https://mcp.bilauitmcuti.com/mcp` and complete **Google OAuth** when the client asks (the hosted server requires sign-in; there is no API key in config). Then ask in plain language. The skill tells the agent which tool to call, to resolve the current session id first, and to answer with the date, group, and activity instead of raw JSON.
 
 Other agent harnesses get the same workflow from the MCP server instructions as soon as they connect to `https://mcp.bilauitmcuti.com/mcp`. They do not need this plugin.
 
