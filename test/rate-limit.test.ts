@@ -81,6 +81,46 @@ describe("enforceRateLimits", () => {
     })
   })
 
+  it("uses the 60s window for a student Google account and the 10s window for other accounts", async () => {
+    const student = RATE_LIMIT_CONFIG.endpoint
+    const standard = RATE_LIMIT_CONFIG.standard
+    const studentReset = (Math.floor(NOW_SEC / student.period) + 1) * student.period
+    const standardReset = (Math.floor(NOW_SEC / standard.period) + 1) * standard.period
+    const req = request("https://mcp.example/mcp")
+
+    const studentOutcome = await enforceRateLimits(req, {}, {
+      sub: "student-1",
+      email: "2024123456@student.uitm.edu.my",
+    })
+    const otherOutcome = await enforceRateLimits(req, {}, {
+      sub: "other-1",
+      email: "person@gmail.com",
+    })
+
+    expect(studentOutcome.ok && studentOutcome.headers).toMatchObject({
+      "X-RateLimit-Limit": String(student.limit),
+      "X-RateLimit-Remaining": String(student.limit - 1),
+      "X-RateLimit-Reset": String(studentReset),
+      "RateLimit-Policy": `"endpoint";q=${student.limit};w=${student.period}`,
+    })
+    expect(otherOutcome.ok && otherOutcome.headers).toMatchObject({
+      "X-RateLimit-Limit": String(standard.limit),
+      "X-RateLimit-Remaining": String(standard.limit - 1),
+      "X-RateLimit-Reset": String(standardReset),
+      "RateLimit-Policy": `"endpoint";q=${standard.limit};w=${standard.period}`,
+    })
+
+    const denied = await enforceRateLimits(
+      req,
+      { STANDARD_RATE_LIMIT: { limit: async () => ({ success: false }) } },
+      { sub: "other-2", email: "person@gmail.com" },
+    )
+    expect(denied.ok).toBe(false)
+    if (denied.ok) return
+    expect(denied.response.headers.get("Retry-After")).toBe(String(standardReset - NOW_SEC))
+    expect(denied.response.headers.get("X-RateLimit-Limit")).toBe(String(standard.limit))
+  })
+
   it("fails open when the binding throws", async () => {
     const outcome = await enforceRateLimits(
       request("https://mcp.example/mcp", { "cf-connecting-ip": "203.0.113.12" }),

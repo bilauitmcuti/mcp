@@ -5,6 +5,7 @@ export interface RateLimitBinding {
 export interface Env {
   MCP_API_BASE_URL?: string
   DOCS_BASE_URL?: string
+  /** UiTM student Google accounts: 120 requests / 60 seconds. */
   API_RATE_LIMIT?: RateLimitBinding
   /** Other Google accounts: 10 requests / 10 seconds (Cloudflare period cannot be 30). */
   STANDARD_RATE_LIMIT?: RateLimitBinding

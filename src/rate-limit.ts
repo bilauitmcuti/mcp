@@ -2,7 +2,7 @@ import { CACHE_CONTROL_ERROR, mcpCorsHeaders } from "./cors"
 import type { Env, RateLimitBinding } from "./env"
 
 export const RATE_LIMIT_CONFIG = {
-  endpoint: { limit: 500, period: 60 },
+  endpoint: { limit: 120, period: 60 },
   // Cloudflare rate-limit periods are only 10s or 60s. 10/10s is the same rate as 30/30s.
   standard: { limit: 10, period: 10 },
 } as const
