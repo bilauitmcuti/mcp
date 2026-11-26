@@ -7,6 +7,19 @@ import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from "./version"
 const DOCS_MCP_URL = "https://docs.bilauitmcuti.com/mcp-server"
 const X_ROBOTS_NOINDEX = "noindex, nofollow"
 
+/** Some MCP clients probe host-root AS metadata before path-insertion URLs. */
+const WELL_KNOWN_AUTH_ALIAS: Record<string, string> = {
+  "/.well-known/oauth-authorization-server": "/.well-known/oauth-authorization-server/api/auth",
+}
+
+function withWellKnownAuthAlias(request: Request, pathname: string): Request {
+  const target = WELL_KNOWN_AUTH_ALIAS[pathname]
+  if (!target) return request
+  const url = new URL(request.url)
+  url.pathname = target
+  return new Request(url, request)
+}
+
 function withRobots(response: Response): Response {
   const headers = new Headers(response.headers)
   headers.set("X-Robots-Tag", X_ROBOTS_NOINDEX)
@@ -76,7 +89,8 @@ export default {
       if (pathname === "/api/auth/__migrate") {
         return withRobots(await handleAuthMigrate(request, env, authRuntime))
       }
-      return withRobots(await handleAuthRequest(request, env, authRuntime))
+      const authRequest = withWellKnownAuthAlias(request, pathname)
+      return withRobots(await handleAuthRequest(authRequest, env, authRuntime))
     }
 
     if (pathname !== "/mcp") {
